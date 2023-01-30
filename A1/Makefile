@@ -1,26 +1,15 @@
-#g++ -std=c++11 -O2 -mavx2 -c matrify.cpp
-CC=g++
-CFLAGS=-std=c++11 -O2 -g -fopenmp
+CC = g++
+CFLAGS = -std=c++17 -fopenmp -O2
+LDFLAGS = -L. -lrary
 
-sources=main.cpp matrify.cpp
+all: main.o
+	$(CC) $(CFLAGS) -o exec main.o $(LDFLAGS)
 
-objects=$(sources:.cpp=.o)
+main.o: main.cpp
+	$(CC) $(CFLAGS) -c main.cpp
 
-matrify:$(objects)
-	$(CC) $(CFLAGS) $^ -o $@
-
-run: matrify
-	./matrify
-
-
-#matrify.o: matrify.h
-#	touch matrify.o
-#	$(CC) $(CFLAGS) -c $<
-#main.o: matrify.h
-#	$(CC) $(CFLAGS) -c $<
-
-%.o: %.cpp matrify.h
-	$(CC) $(CFLAGS) -c $<
+run: all
+	./exec
 
 clean:
-	rm *.o matrify
+	rm -f exec main.o
