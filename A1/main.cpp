@@ -1,4 +1,4 @@
-#include <unistd.h>
+//#include <unistd.h>
 #include <iostream>
 #include <fstream>
 #include <chrono>
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 
     int n,m,k;
 
-    ifstream input("input.bin", ios::binary);
+    ifstream input(argv[1], ios::binary);
 
 
     input.read((char*)&n, 4);
@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
             final_chunk_count += f_output[i].size();
         }
 
-    ofstream output("output.bin", ios::binary);
+    ofstream output(argv[2], ios::binary);
 
 
     output.write((char*)&n, 4);
