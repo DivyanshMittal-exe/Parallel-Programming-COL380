@@ -12,8 +12,12 @@ main.o: main.cpp
 run: all
 	./exec
 
-comp:
-	$(CC) $(CFLAGS) -o comp comp.cpp
+comp: comp.o
+	$(CC) $(CFLAGS) -o comp comp.o
+
+comp.o:comp.cpp
+	$(CC) $(CFLAGS) -c comp.cpp
+
 
 clean:
 	rm -f exec main.o comp

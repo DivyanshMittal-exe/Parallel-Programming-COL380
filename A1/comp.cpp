@@ -14,7 +14,7 @@
 using namespace std;
 
 struct Chunk {
-    int x, y;
+    int x , y ;
 
     vector<vector<int>> d_og;
     vector<vector<int>>*d = &d_og;
@@ -33,17 +33,32 @@ struct Chunk {
 
     bool operator==(const Chunk& other) const {
         if (x != other.x || y != other.y || d->size() != other.d->size()) {
+
             return false;
         }
-        for (int i = 0; i < d->size(); i++) {
-            for (int j = 0; j < (*d)[i].size(); j++) {
-                if ((*d)[i][j] != (*(other.d))[i][j]) {
+        auto m = d->size();
+        for (int i = 0; i <m; i++) {
+            for (int j = 0; j < m; j++) {
+                if (d_og[i][j] != d_og[i][j]) {
                     return false;
                 }
             }
         }
         return true;
     }
+
+    void print(){
+        cout << x << " " << y;
+        for(auto x: d_og){
+            cout << '\n';
+            for(auto y: x){
+                cout << y << " ";
+            }
+        }
+        cout << "\n";
+    }
+
+
 
 
 };
@@ -55,17 +70,26 @@ int main(int argc, char *argv[])
 
     int n,m,k;
 
-    ifstream input(argv[1], ios::binary);
+    ifstream input(argv[1], fstream::binary);
 
 
     input.read((char*)&n, 4);
     input.read((char*)&m, 4);
     input.read((char*)&k, 4);
 
+    cout << n << " " << m << " " << k << endl;
+
+//    return 0;
+
+    k = 210;
+
+
+    cout << "Starting F \n";
+
     vector<Chunk> chunks(k);
 
     for (int i = 0; i < k; i++) {
-        int x, y;
+        int x = 0, y = 0;
         input.read((char*)&x, 4);
         input.read((char*)&y, 4);
 
@@ -73,9 +97,12 @@ int main(int argc, char *argv[])
         chunks[i] = Chunk(x,y,m);
         for(int j = 0; j < m; j ++){
             for(int t = 0; t < m;t++){
-                input.read((char*)&(chunks[i].d_og[j][t] ), 1);
+                input.read((char*)&(chunks[i].d_og[j][t] ), 2);
             }
         }
+
+        chunks[i].print();
+
 
     }
     sort(chunks.begin(), chunks.end());
@@ -89,6 +116,10 @@ int main(int argc, char *argv[])
     input2.read((char*)&m2, 4);
     input2.read((char*)&k2, 4);
 
+    k2 = k;
+
+    cout << "Starting S \n";
+
     vector<Chunk> chunks2(k2);
 
     for (int i = 0; i < k2; i++) {
@@ -100,25 +131,42 @@ int main(int argc, char *argv[])
         chunks2[i] = Chunk(x,y,m2);
         for(int j = 0; j < m2; j ++){
             for(int t = 0; t < m2;t++){
-                input2.read((char*)&(chunks2[i].d_og[j][t] ), 1);
+                input2.read((char*)&(chunks2[i].d_og[j][t] ), 2);
             }
         }
 
+        chunks2[i].print();
+
     }
 
+    cout << endl;
+    cout << endl;
+    cout << endl;
+    cout << endl;
+    cout << endl;
+    cout << endl;
+
+
     bool equal = true;
-    if (n != n2 || m != m2 || k != k2) {
-        equal = false;
-    } else if (chunks.size() != chunks2.size()) {
-        equal = false;
-    } else {
-        for (int i = 0; i < chunks.size(); i++) {
+//    if (n != n2 || m != m2 || k != k2) {
+//        equal = false;
+//    } else if (chunks.size() != chunks2.size()) {
+//        equal = false;
+//    } else {
+        for (int i = 0; i < chunks2.size(); i++) {
             if (!(chunks[i] == chunks2[i])) {
+
+                cout << i << " f\n";
+                chunks[i].print();
+
+                cout << "s\n";
+                chunks2[i].print();
+
                 equal = false;
                 break;
             }
         }
-    }
+//    }
 
     if (equal) {
         cout << "equal" << endl;
@@ -132,3 +180,4 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+
