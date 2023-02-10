@@ -20,7 +20,7 @@ comp.o:comp.cpp
 
 
 clean:
-	rm -f exec main.o comp
+	rm -f exec main.o comp comp.o main main.o
 
 test_1: all
 	./exec input output_test_1

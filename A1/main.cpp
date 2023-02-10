@@ -4,6 +4,8 @@
 #include <chrono>
 #include <algorithm>
 
+#include <execution>
+
 #include <vector>
 #include <map>
 #include <set>
@@ -184,7 +186,7 @@ int main(int argc, char *argv[])
     vector<int> indices_vec(indices.begin(), indices.end());
 
 
-#pragma omp parallel for  schedule(dynamic, 1)
+//#pragma omp parallel for  schedule(dynamic, 1)
     for (int ind_index = 0; ind_index < indices_vec.size(); ind_index ++) {
         int i_index = indices_vec[ind_index];
 
@@ -211,11 +213,6 @@ int main(int argc, char *argv[])
         }
 
     }
-//    vector<vector<Chunk<unsigned short>>> final_converted_to_print(indices.size());
-//    for (int i = 0; i < f_output.size(); i++) {
-//        final_converted_to_print[i]
-//    }
-
 
 
 
