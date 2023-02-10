@@ -13,17 +13,20 @@
 
 using namespace std;
 
+template <typename T>
 struct Chunk {
-    int x , y ;
+    int x, y, m;
 
-    vector<vector<int>> d_og;
-    vector<vector<int>>*d = &d_og;
+    T* d;
 
-    Chunk(const Chunk& other):x(other.x), y(other.y), d(other.d){}
 
-    Chunk(int x = 0, int  y = 0, int m = 1) : x(x), y(y), d_og(m, std::vector<int>(m,0)), d(&d_og) {}
+    Chunk(const Chunk<T>& other):x(other.x), y(other.y), m(other.m), d(other.d){}
 
-    bool operator<(const Chunk& other) const {
+    Chunk(int x = 0, int  y = 0, int m = 1) : x(x), y(y), m(m) {
+        d = (T*)std::malloc(sizeof(T)*m*m);
+    }
+
+    bool operator<(const Chunk<T>& other) const {
         if (x != other.x) {
             return x < other.x;
         } else {
@@ -32,14 +35,13 @@ struct Chunk {
     }
 
     bool operator==(const Chunk& other) const {
-        if (x != other.x || y != other.y || d->size() != other.d->size()) {
-
+        if (x != other.x || y != other.y || m != other.m) {
             return false;
         }
-        auto m = d->size();
+
         for (int i = 0; i <m; i++) {
             for (int j = 0; j < m; j++) {
-                if (d_og[i][j] != d_og[i][j]) {
+                if (d[m*i + j] != d[m*i + j]) {
                     return false;
                 }
             }
@@ -47,12 +49,12 @@ struct Chunk {
         return true;
     }
 
-    void print(){
+    const void print() const{
         cout << x << " " << y;
-        for(auto x: d_og){
-            cout << '\n';
-            for(auto y: x){
-                cout << y << " ";
+        for(int i = 0; i < m; ++i){
+            cout << "\n";
+            for (int j = 0; j < m; ++j) {
+                cout << d[i*m + j] << " ";
             }
         }
         cout << "\n";
@@ -77,36 +79,6 @@ int main(int argc, char *argv[])
     input.read((char*)&m, 4);
     input.read((char*)&k, 4);
 
-    cout << n << " " << m << " " << k << endl;
-
-//    return 0;
-
-    k = 210;
-
-
-    cout << "Starting F \n";
-
-    vector<Chunk> chunks(k);
-
-    for (int i = 0; i < k; i++) {
-        int x = 0, y = 0;
-        input.read((char*)&x, 4);
-        input.read((char*)&y, 4);
-
-
-        chunks[i] = Chunk(x,y,m);
-        for(int j = 0; j < m; j ++){
-            for(int t = 0; t < m;t++){
-                input.read((char*)&(chunks[i].d_og[j][t] ), 2);
-            }
-        }
-
-        chunks[i].print();
-
-
-    }
-    sort(chunks.begin(), chunks.end());
-
     int n2,m2,k2;
 
     ifstream input2(argv[2], ios::binary);
@@ -116,11 +88,51 @@ int main(int argc, char *argv[])
     input2.read((char*)&m2, 4);
     input2.read((char*)&k2, 4);
 
+    //IMP
+
     k2 = k;
+
+    cout << n << " " << m << " " << k << endl;
+
+//    return 0;
+
+//    k = 210;
+
+
+    cout << "Starting F \n";
+
+    vector<Chunk<unsigned short >> chunks(k);
+
+    for (int i = 0; i < k; i++) {
+        int x = 0, y = 0;
+        input.read((char*)&x, 4);
+        input.read((char*)&y, 4);
+
+
+        chunks[i] = Chunk<unsigned short>(x,y,m);
+
+        input.read((char *)(chunks[i].d), 2 * m *  m);
+
+        //        for(int j = 0; j < m; j ++){
+//            for(int t = 0; t < m;t++){
+//                input.read((char*)&(chunks[i].d_og[j][t] ), 2);
+//            }
+//        }
+
+//        chunks[i].print();
+
+
+    }
+    sort(chunks.begin(), chunks.end());
+
+    for (int i = 0; i < chunks.size(); ++i) {
+        chunks[i].print();
+    }
+
 
     cout << "Starting S \n";
 
-    vector<Chunk> chunks2(k2);
+    vector<Chunk<unsigned short >> chunks2(k2);
 
     for (int i = 0; i < k2; i++) {
         int x, y;
@@ -128,15 +140,23 @@ int main(int argc, char *argv[])
         input2.read((char*)&y, 4);
 
 
-        chunks2[i] = Chunk(x,y,m2);
-        for(int j = 0; j < m2; j ++){
-            for(int t = 0; t < m2;t++){
-                input2.read((char*)&(chunks2[i].d_og[j][t] ), 2);
-            }
-        }
+        chunks2[i] = Chunk<unsigned short >(x,y,m2);
+        input2.read((char *)(chunks2[i].d), 2 * m *  m);
 
+//        for(int j = 0; j < m2; j ++){
+//            for(int t = 0; t < m2;t++){
+//                input2.read((char*)&(chunks2[i].d_og[j][t] ), 2);
+//            }
+//        }
+
+//        chunks2[i].print();
+
+    }
+
+    sort(chunks2.begin(), chunks2.end());
+
+    for (int i = 0; i < chunks2.size(); ++i) {
         chunks2[i].print();
-
     }
 
     cout << endl;
@@ -148,11 +168,11 @@ int main(int argc, char *argv[])
 
 
     bool equal = true;
-//    if (n != n2 || m != m2 || k != k2) {
-//        equal = false;
-//    } else if (chunks.size() != chunks2.size()) {
-//        equal = false;
-//    } else {
+    if (n != n2 || m != m2 || k != k2) {
+        equal = false;
+    } else if (chunks.size() != chunks2.size()) {
+        equal = false;
+    } else {
         for (int i = 0; i < chunks2.size(); i++) {
             if (!(chunks[i] == chunks2[i])) {
 
@@ -166,7 +186,7 @@ int main(int argc, char *argv[])
                 break;
             }
         }
-//    }
+    }
 
     if (equal) {
         cout << "equal" << endl;
