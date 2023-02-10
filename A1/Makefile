@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -std=c++17 -fopenmp -O2
+CFLAGS = -std=c++17 -g -fopenmp -O3
 ROOT_DIR:= /home/higgboson/Codes/Sem 6/Parallel-Programming-COL380/A1
 LDFLAGS = -L. -lrary
 
