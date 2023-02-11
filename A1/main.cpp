@@ -1,10 +1,5 @@
-//#include <unistd.h>
 #include <iostream>
-#include <fstream>
-#include <chrono>
 #include <algorithm>
-
-#include <execution>
 
 #include <vector>
 #include <map>
@@ -36,16 +31,15 @@ struct Chunk {
         }
     }
 
-    void clr(int m){
-        for (int i = 0; i < m*m; ++i) {
-            d[i] = 0;
-        }
+    void clr(){
+        memset(d,0,sizeof(d));
+
     }
 
 
 };
 
-void mult_add(int chunk_size,Chunk<int> & result, Chunk<unsigned char > & r1,Chunk<unsigned char > & r2 ){
+void mult_add(int chunk_size,Chunk<int> & result, const Chunk<unsigned char > & r1,const Chunk<unsigned char > & r2 ){
     assert(result.x == r1.x);
     assert(result.y == r2.y);
     assert(r1.y == r2.x);
@@ -83,53 +77,6 @@ void mult_add(int chunk_size,Chunk<int> & result, Chunk<unsigned char > & r1,Chu
         cout << "Hmmmmmm";
     }
 
-//    int (*array_ptr)[chunk_size] = (int(*)[chunk_size])result.d;
-
-//    int (arr)[chunk_size][chunk_size] = *reinterpret_cast<int (*)[chunk_size][chunk_size]>(result.d);
-
-
-
-
-//
-//    if (r1.x > r1.y) {
-//        if (r2.x > r2.y) {
-//            for (i = 0; i < chunk_size; ++i) {
-//                for (k = 0; k < chunk_size; ++k) {
-//                    for (j = 0; j < chunk_size; ++j) {
-//                        result.d[k][i] += r1.d[j][i] * r2.d[k][j];
-//                    }
-//                }
-//            }
-//        } else {
-//            for (i = 0; i < chunk_size; ++i) {
-//                for (k = 0; k < chunk_size; ++k) {
-//                    for (j = 0; j < chunk_size; ++j) {
-//                        result.d[k][i] += r1.d[j][i] * r2.d[j][k];
-//                    }
-//                }
-//            }
-//        }
-//    } else {
-//        if (r2.x > r2.y) {
-//            for (i = 0; i < chunk_size; ++i) {
-//                for (k = 0; k < chunk_size; ++k) {
-//                    for (j = 0; j < chunk_size; ++j) {
-//                        result.d[k][i] += r1.d[i][j] * r2.d[k][j];
-//                    }
-//                }
-//            }
-//        } else {
-//            for (i = 0; i < chunk_size; ++i) {
-//                for (k = 0; k < chunk_size; ++k) {
-//                    for (j = 0; j < chunk_size; ++j) {
-//                        result.d[k][i] += r1.d[i][j] * r2.d[j][k];
-//                    }
-//                }
-//            }
-//        }
-//    }
-
-
 
 
 
@@ -151,8 +98,7 @@ int main(int argc, char *argv[])
 
     vector<Chunk<unsigned char>> chunks(2*chunk_count);
     set<int> indices;
-//    map<int,int> indices;
-//    vector<Chunk> chunks_by_col(k);
+
 
     for (int i = 0; i < chunk_count; i++) {
         int x = 0, y = 0;
@@ -169,8 +115,7 @@ int main(int argc, char *argv[])
 
     }
 
-//    cout << indices.size();
-
+#pragma omp parallel for
     for (int i = 0; i < chunk_count; ++i) {
         chunks[chunk_count + i] = chunks[i];
         chunks[chunk_count+i].x = chunks[i].y;
@@ -182,11 +127,11 @@ int main(int argc, char *argv[])
 
     vector<map<int,Chunk<int>>> f_output(indices.size());
 
-//    int indices_index = 0;
+
     vector<int> indices_vec(indices.begin(), indices.end());
 
 
-//#pragma omp parallel for  schedule(dynamic, 1)
+#pragma omp parallel for  schedule(dynamic, 1)
     for (int ind_index = 0; ind_index < indices_vec.size(); ind_index ++) {
         int i_index = indices_vec[ind_index];
 
@@ -201,12 +146,10 @@ int main(int argc, char *argv[])
 
                 if(f_output[ind_index].count(k_index) == 0){
                     f_output[ind_index][k_index] = Chunk<int>(i_index, k_index, m);
-                    f_output[ind_index][k_index].clr(m);
+                    f_output[ind_index][k_index].clr();
                 }
 
                 mult_add(m,f_output[ind_index][k_index],*row_element,*col_element);
-
-//                f_output[ind_index][col_element->y] += (*row_element) * (*col_element);
 
 
             }
@@ -217,12 +160,32 @@ int main(int argc, char *argv[])
 
 
     int final_chunk_count = 0;
-//    #pragma omp parallel for reduction(+:final_chunk_count)
+    #pragma omp parallel for reduction(+:final_chunk_count)
         for (int i = 0; i < f_output.size(); i++) {
             final_chunk_count += f_output[i].size();
         }
 
+    vector<vector<Chunk<unsigned short>>> f_output_us(f_output.size());
+    for (int i = 0; i < f_output.size(); i++) {
+        f_output_us[i].resize(f_output[i].size());
+    }
 
+    const int max_val = 0xFFFF;
+
+#pragma omp parallel for
+    for (int i = 0; i < f_output_us.size(); ++i) {
+        int j = 0;
+        for ( auto const &[k_val, chunk_val] : f_output[i]) {
+            f_output_us[i][j] = Chunk<unsigned short>(chunk_val.x,chunk_val.y,m);
+            for (int k = 0; k < m; ++k) {
+                for (int l = 0; l < m; ++l) {
+                    f_output_us[i][j].d[m*k + l] = min(max_val,chunk_val.d[m*k + l]);
+                }
+            }
+            ++j;
+
+        }
+    }
 
     ofstream output(argv[2], ios::binary);
 
@@ -230,38 +193,15 @@ int main(int argc, char *argv[])
     output.write((char*)&n, 4);
     output.write((char*)&m, 4);
     output.write((char*)&final_chunk_count, 4);
-    const int max_val = 0xFFFF;
 
 
-
-    for(const auto int_chunk_map: f_output){
-        for (const auto &[k_val, chunk_val] : int_chunk_map) {
-            output.write((char*)&(chunk_val.x), 4);
-            output.write((char*)&(chunk_val.y), 4);
-
-            for (int i = 0; i < m*m; ++i) {
-                if(chunk_val.d[i] > max_val){
-                        output.write((char*)&(max_val), 2);
-                    }else{
-                        output.write((char*)&(chunk_val.d[i]), 2);
-                    }
-            }
-//            for(int j = 0; j < m; j ++){
-//                for(int t = 0; t < m;t++){
-//                    if((*(chunk_val.d))[j][t] > max_val){
-//                        output.write((char*)&(max_val) + 2, 2);
-//                    }else{
-//                        output.write((char*)&((*(chunk_val.d))[j][t]) + 2, 2);
-//                    }
-//
-//                }
-//            }
+    for(const auto &f_output_us_i: f_output_us){
+        for(const auto & f_ch_to_p : f_output_us_i){
+            output.write((char*)&(f_ch_to_p.x), 4);
+            output.write((char*)&(f_ch_to_p.y), 4);
+            output.write((char*)(f_ch_to_p.d), 2*m*m);
         }
     }
-
-//    sort(chunks_by_row.begin(), chunks_by_row.end(), compare_by_row);
-//    sort(chunks_by_col.begin(), chunks_by_col.end(), compare_by_col);
-
 
 
     return 0;

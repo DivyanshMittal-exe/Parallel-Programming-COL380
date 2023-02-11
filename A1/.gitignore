@@ -3,3 +3,5 @@ comp
 input2
 output2
 library2.so
+main.o
+comp.o

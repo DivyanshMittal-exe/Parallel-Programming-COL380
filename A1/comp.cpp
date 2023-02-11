@@ -90,13 +90,12 @@ int main(int argc, char *argv[])
 
     //IMP
 
-    k2 = k;
-
-    cout << n << " " << m << " " << k << endl;
-
-//    return 0;
-
+//    k2 = k = 210;
+//    k2 = 210;
 //    k = 210;
+//    cout << n << " " << m << " " << k << endl;
+//    cout << n << " " << m << " " << k2 << endl;
+
 
 
     cout << "Starting F \n";
@@ -112,14 +111,6 @@ int main(int argc, char *argv[])
         chunks[i] = Chunk<unsigned short>(x,y,m);
 
         input.read((char *)(chunks[i].d), 2 * m *  m);
-
-        //        for(int j = 0; j < m; j ++){
-//            for(int t = 0; t < m;t++){
-//                input.read((char*)&(chunks[i].d_og[j][t] ), 2);
-//            }
-//        }
-
-//        chunks[i].print();
 
 
     }
