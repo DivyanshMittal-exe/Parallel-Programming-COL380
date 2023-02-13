@@ -14,20 +14,20 @@
 
 using namespace std;
 
-template <typename T>
+template<typename T>
 struct Chunk {
     int x, y;
 
-    T* d;
+    T *d;
 
 
-    Chunk(const Chunk<T>& other):x(other.x), y(other.y), d(other.d){}
+    Chunk(const Chunk<T> &other) : x(other.x), y(other.y), d(other.d) {}
 
-    Chunk(int x = 0, int  y = 0, int m = 1) : x(x), y(y) {
-        d = (T*)std::malloc(sizeof(T)*m*m);
+    Chunk(int x = 0, int y = 0, int m = 1) : x(x), y(y) {
+        d = (T *) std::malloc(sizeof(T) * m * m);
     }
 
-    bool operator<(const Chunk<T>& other) const {
+    bool operator<(const Chunk<T> &other) const {
         if (x != other.x) {
             return x < other.x;
         } else {
@@ -35,64 +35,61 @@ struct Chunk {
         }
     }
 
-    void clr(){
-        memset(d,0,sizeof(d));
+    void clr() {
+        memset(d, 0, sizeof(d));
 
     }
 
 
 };
 
-void mult_add(int chunk_size,Chunk<int> & result, const Chunk<unsigned char > & r1,const Chunk<unsigned char > & r2 ){
+void mult_add(int chunk_size, Chunk<int> &result, const Chunk<unsigned char> &r1, const Chunk<unsigned char> &r2) {
     assert(result.x == r1.x);
     assert(result.y == r2.y);
     assert(r1.y == r2.x);
-    int i,j,k;
+    int i, j, k;
 
-    if(r1.x <= r1.y && r2.x <= r2.y){
+    if (r1.x <= r1.y && r2.x <= r2.y) {
         for (i = 0; i < chunk_size; ++i) {
             for (j = 0; j < chunk_size; ++j) {
                 for (k = 0; k < chunk_size; ++k) {
-                        result.d[i*chunk_size + k] += r1.d[i*chunk_size + j] * r2.d[j*chunk_size + k];
-                    }
+                    result.d[i * chunk_size + k] += r1.d[i * chunk_size + j] * r2.d[j * chunk_size + k];
                 }
             }
+        }
 
-    }else if(r1.y <= r1.x && r2.x <= r2.y){
+    } else if (r1.y <= r1.x && r2.x <= r2.y) {
 
         for (j = 0; j < chunk_size; ++j) {
             for (i = 0; i < chunk_size; ++i) {
                 for (k = 0; k < chunk_size; ++k) {
-                    result.d[i*chunk_size + k] += r1.d[j*chunk_size + i] * r2.d[j*chunk_size + k];
+                    result.d[i * chunk_size + k] += r1.d[j * chunk_size + i] * r2.d[j * chunk_size + k];
                 }
             }
         }
 
-    }else if(r1.x <= r1.y && r2.y <= r2.x){
+    } else if (r1.x <= r1.y && r2.y <= r2.x) {
         for (i = 0; i < chunk_size; ++i) {
             for (k = 0; k < chunk_size; ++k) {
                 for (j = 0; j < chunk_size; ++j) {
 
-                    result.d[i*chunk_size + k] += r1.d[i*chunk_size + j] * r2.d[k*chunk_size + j];
+                    result.d[i * chunk_size + k] += r1.d[i * chunk_size + j] * r2.d[k * chunk_size + j];
                 }
             }
         }
-    }else{
+    } else {
         cout << "Hmmmmmm";
     }
-
-
 
 
 }
 
 
-
 int main(int argc, char *argv[]) {
 
-    #ifdef time_test
-      auto start = chrono::high_resolution_clock::now();
-    #endif
+#ifdef time_test
+    auto start = chrono::high_resolution_clock::now();
+#endif
 
 
     int n, m, chunk_count;
@@ -125,11 +122,11 @@ int main(int argc, char *argv[]) {
 
 #pragma omp parallel
     {
-    #pragma omp single
+#pragma omp single
         {
             for (int i = 0; i < chunk_count; ++i) {
 
-    #pragma task
+#pragma task
                 {
                     chunks[chunk_count + i] = chunks[i];
                     chunks[chunk_count + i].x = chunks[i].y;
@@ -144,9 +141,6 @@ int main(int argc, char *argv[]) {
     }
 
 
-
-
-
     sort(chunks.begin(), chunks.end());
 
     vector<map<int, Chunk<int>>> f_output(indices.size());
@@ -157,42 +151,45 @@ int main(int argc, char *argv[]) {
 
 #pragma omp parallel
     {
-    #pragma omp single
+#pragma omp single
         {
+
+
             for (int ind_index = 0; ind_index < indices_vec.size(); ind_index++) {
-    #pragma omp task shared(f_output,chunks,indices_vec,m) firstprivate(ind_index)
+#pragma omp task shared(f_output, chunks, indices_vec, m) firstprivate(ind_index)
                 {
-        int i_index = indices_vec[ind_index];
+                    int i_index = indices_vec[ind_index];
 
-        auto row_element = std::lower_bound(chunks.begin(), chunks.end(), Chunk<unsigned char>{i_index, 0, {}});
-        for (; row_element != chunks.end() && row_element->x == i_index; row_element++) {
-            int j_index = row_element->y;
-            auto col_element = std::lower_bound(chunks.begin(), chunks.end(),
-                                                Chunk<unsigned char>{j_index, i_index, {}});
+                    auto row_element = std::lower_bound(chunks.begin(), chunks.end(),
+                                                        Chunk<unsigned char>{i_index, 0, {}});
+                    for (; row_element != chunks.end() && row_element->x == i_index; row_element++) {
+                        int j_index = row_element->y;
+                        auto col_element = std::lower_bound(chunks.begin(), chunks.end(),
+                                                            Chunk<unsigned char>{j_index, i_index, {}});
 
-            for (; col_element != chunks.end() && col_element->x == j_index; col_element++) {
-                int k_index = col_element->y;
+                        for (; col_element != chunks.end() && col_element->x == j_index; col_element++) {
+                            int k_index = col_element->y;
 
 
-                if (f_output[ind_index].count(k_index) == 0) {
-                    f_output[ind_index][k_index] = Chunk<int>(i_index, k_index, m);
-                    f_output[ind_index][k_index].clr();
+                            if (f_output[ind_index].count(k_index) == 0) {
+                                f_output[ind_index][k_index] = Chunk<int>(i_index, k_index, m);
+                                f_output[ind_index][k_index].clr();
+                            }
+
+                            mult_add(m, f_output[ind_index][k_index], *row_element, *col_element);
+
+
+                        }
+                    }
+
                 }
 
-                mult_add(m, f_output[ind_index][k_index], *row_element, *col_element);
 
-
-            }
-        }
-
-                }
             }
         }
 
 #pragma omp taskwait
     }
-
-
 
 
     int final_chunk_count = 0;
@@ -207,19 +204,28 @@ int main(int argc, char *argv[]) {
     }
 
     const int max_val = 0xFFFF;
+    Chunk<int> zero_chunk(-1,-1,m);
+    zero_chunk.clr();
 
 #pragma omp parallel for
     for (int i = 0; i < f_output_us.size(); ++i) {
         int j = 0;
-        for (auto const &[k_val, chunk_val]: f_output[i]) {
-            f_output_us[i][j] = Chunk<unsigned short>(chunk_val.x, chunk_val.y, m);
-            for (int k = 0; k < m; ++k) {
-                for (int l = 0; l < m; ++l) {
-                    f_output_us[i][j].d[m * k + l] = min(max_val, chunk_val.d[m * k + l]);
+        for (auto it = f_output[i].begin(); it != f_output[i].end();) {
+            auto const &[k_val, chunk_val] = *it;
+            if (memcmp(chunk_val.d, zero_chunk.d, m * m * sizeof(int)) == 0) {
+                it = f_output[i].erase(it);
+#pragma omp critical
+                final_chunk_count --;
+            } else {
+                ++it;
+                f_output_us[i][j] = Chunk<unsigned short>(chunk_val.x, chunk_val.y, m);
+                for (int k = 0; k < m; ++k) {
+                    for (int l = 0; l < m; ++l) {
+                        f_output_us[i][j].d[m * k + l] = min(max_val, chunk_val.d[m * k + l]);
+                    }
                 }
+                ++j;
             }
-            ++j;
-
         }
     }
 
@@ -232,39 +238,36 @@ int main(int argc, char *argv[]) {
 
 
 //    #pragma omp parallel for
-    for(const auto &f_output_us_i: f_output_us){
-        for(const auto & f_ch_to_p : f_output_us_i){
+    for (int i = 0; i < f_output.size(); ++i) {
+        for (int j = 0; j < f_output[i].size(); ++j) {
+            const auto &f_ch_to_p = f_output_us[i][j];
 //        #pragma omp critical
             {
-                output.write((char*)&(f_ch_to_p.x), 4);
-                output.write((char*)&(f_ch_to_p.y), 4);
-                output.write((char*)(f_ch_to_p.d), 2*m*m);
+                output.write((char *) &(f_ch_to_p.x), 4);
+                output.write((char *) &(f_ch_to_p.y), 4);
+                output.write((char *) (f_ch_to_p.d), 2 * m * m);
             }
 
         }
     }
 
-    #ifdef time_test
-        output.close();
-      auto stop = chrono::high_resolution_clock::now();
-      auto duration = chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+#ifdef time_test
+    output.close();
+  auto stop = chrono::high_resolution_clock::now();
+  auto duration = chrono::duration_cast<std::chrono::milliseconds>(stop - start);
 
-      std::ofstream outfile("time.txt", std::ios_base::app | std::ios_base::out);
+  std::ofstream outfile("time.txt", std::ios_base::app | std::ios_base::out);
 
-        #pragma omp parallel
-          {
-            #pragma omp single
-            {
-              outfile<<"Size: " << argv[1] << " Thread: "<<  omp_get_num_threads() << " Time: " << duration.count() << "\n";
+#pragma omp parallel
+      {
+#pragma omp single
+        {
+          outfile<<"Size: " << argv[1] << " Thread: "<<  omp_get_num_threads() << " Time: " << duration.count() << "\n";
 
-            }
-          }
+        }
+      }
 
-    #endif
-
-
-
-
+#endif
 
 
     return 0;
