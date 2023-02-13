@@ -115,10 +115,10 @@ int main(int argc, char *argv[])
 
     }
     sort(chunks.begin(), chunks.end());
-
-    for (int i = 0; i < chunks.size(); ++i) {
-        chunks[i].print();
-    }
+//
+//    for (int i = 0; i < chunks.size(); ++i) {
+//        chunks[i].print();
+//    }
 
 
     cout << "Starting S \n";
@@ -146,9 +146,9 @@ int main(int argc, char *argv[])
 
     sort(chunks2.begin(), chunks2.end());
 
-    for (int i = 0; i < chunks2.size(); ++i) {
-        chunks2[i].print();
-    }
+//    for (int i = 0; i < chunks2.size(); ++i) {
+//        chunks2[i].print();
+//    }
 
     cout << endl;
     cout << endl;

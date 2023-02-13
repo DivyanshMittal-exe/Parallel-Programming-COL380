@@ -6,7 +6,11 @@
 #include <set>
 #include <omp.h>
 
+#include <chrono>
+
+
 #include "library.hpp"
+
 
 using namespace std;
 
@@ -84,86 +88,118 @@ void mult_add(int chunk_size,Chunk<int> & result, const Chunk<unsigned char > & 
 
 
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 
-    int n,m,chunk_count;
+    #ifdef time_test
+      auto start = chrono::high_resolution_clock::now();
+    #endif
+
+
+    int n, m, chunk_count;
 
     ifstream input(argv[1], ios::binary);
 
 
-    input.read((char*)&n, 4);
-    input.read((char*)&m, 4);
-    input.read((char*)&chunk_count, 4);
+    input.read((char *) &n, 4);
+    input.read((char *) &m, 4);
+    input.read((char *) &chunk_count, 4);
 
-    vector<Chunk<unsigned char>> chunks(2*chunk_count);
+    vector<Chunk<unsigned char>> chunks(2 * chunk_count);
     set<int> indices;
 
 
     for (int i = 0; i < chunk_count; i++) {
         int x = 0, y = 0;
-        input.read((char*)&x, 4);
-        input.read((char*)&y, 4);
+        input.read((char *) &x, 4);
+        input.read((char *) &y, 4);
 
         indices.insert(x);
         indices.insert(y);
 
-        chunks[i] = Chunk<unsigned char>(x,y,m);
+        chunks[i] = Chunk<unsigned char>(x, y, m);
 
-        input.read((char*)(chunks[i].d), m*m);
+        input.read((char *) (chunks[i].d), m * m);
 
 
     }
 
-#pragma omp parallel for
-    for (int i = 0; i < chunk_count; ++i) {
-        chunks[chunk_count + i] = chunks[i];
-        chunks[chunk_count+i].x = chunks[i].y;
-        chunks[chunk_count+i].y = chunks[i].x;
+#pragma omp parallel
+    {
+    #pragma omp single
+        {
+            for (int i = 0; i < chunk_count; ++i) {
+
+    #pragma task
+                {
+                    chunks[chunk_count + i] = chunks[i];
+                    chunks[chunk_count + i].x = chunks[i].y;
+                    chunks[chunk_count + i].y = chunks[i].x;
+
+                }
+
+            }
+
+        }
+#pragma omp taskwait
     }
+
+
+
 
 
     sort(chunks.begin(), chunks.end());
 
-    vector<map<int,Chunk<int>>> f_output(indices.size());
+    vector<map<int, Chunk<int>>> f_output(indices.size());
 
 
     vector<int> indices_vec(indices.begin(), indices.end());
 
 
-#pragma omp parallel for  schedule(dynamic, 1)
-    for (int ind_index = 0; ind_index < indices_vec.size(); ind_index ++) {
+#pragma omp parallel
+    {
+    #pragma omp single
+        {
+            for (int ind_index = 0; ind_index < indices_vec.size(); ind_index++) {
+    #pragma omp task shared(f_output,chunks,indices_vec,m) firstprivate(ind_index)
+                {
         int i_index = indices_vec[ind_index];
 
         auto row_element = std::lower_bound(chunks.begin(), chunks.end(), Chunk<unsigned char>{i_index, 0, {}});
-        for(;row_element != chunks.end() && row_element->x == i_index; row_element++){
+        for (; row_element != chunks.end() && row_element->x == i_index; row_element++) {
             int j_index = row_element->y;
-            auto col_element = std::lower_bound(chunks.begin(), chunks.end(), Chunk<unsigned char>{j_index, i_index, {}});
+            auto col_element = std::lower_bound(chunks.begin(), chunks.end(),
+                                                Chunk<unsigned char>{j_index, i_index, {}});
 
-            for(; col_element != chunks.end() && col_element->x == j_index; col_element++){
+            for (; col_element != chunks.end() && col_element->x == j_index; col_element++) {
                 int k_index = col_element->y;
 
 
-                if(f_output[ind_index].count(k_index) == 0){
+                if (f_output[ind_index].count(k_index) == 0) {
                     f_output[ind_index][k_index] = Chunk<int>(i_index, k_index, m);
                     f_output[ind_index][k_index].clr();
                 }
 
-                mult_add(m,f_output[ind_index][k_index],*row_element,*col_element);
+                mult_add(m, f_output[ind_index][k_index], *row_element, *col_element);
 
 
             }
         }
 
+                }
+            }
+        }
+
+#pragma omp taskwait
     }
 
 
 
+
     int final_chunk_count = 0;
-    #pragma omp parallel for reduction(+:final_chunk_count)
-        for (int i = 0; i < f_output.size(); i++) {
-            final_chunk_count += f_output[i].size();
-        }
+#pragma omp parallel for reduction(+:final_chunk_count)
+    for (int i = 0; i < f_output.size(); i++) {
+        final_chunk_count += f_output[i].size();
+    }
 
     vector<vector<Chunk<unsigned short>>> f_output_us(f_output.size());
     for (int i = 0; i < f_output.size(); i++) {
@@ -175,11 +211,11 @@ int main(int argc, char *argv[])
 #pragma omp parallel for
     for (int i = 0; i < f_output_us.size(); ++i) {
         int j = 0;
-        for ( auto const &[k_val, chunk_val] : f_output[i]) {
-            f_output_us[i][j] = Chunk<unsigned short>(chunk_val.x,chunk_val.y,m);
+        for (auto const &[k_val, chunk_val]: f_output[i]) {
+            f_output_us[i][j] = Chunk<unsigned short>(chunk_val.x, chunk_val.y, m);
             for (int k = 0; k < m; ++k) {
                 for (int l = 0; l < m; ++l) {
-                    f_output_us[i][j].d[m*k + l] = min(max_val,chunk_val.d[m*k + l]);
+                    f_output_us[i][j].d[m * k + l] = min(max_val, chunk_val.d[m * k + l]);
                 }
             }
             ++j;
@@ -190,18 +226,45 @@ int main(int argc, char *argv[])
     ofstream output(argv[2], ios::binary);
 
 
-    output.write((char*)&n, 4);
-    output.write((char*)&m, 4);
-    output.write((char*)&final_chunk_count, 4);
+    output.write((char *) &n, 4);
+    output.write((char *) &m, 4);
+    output.write((char *) &final_chunk_count, 4);
 
 
+//    #pragma omp parallel for
     for(const auto &f_output_us_i: f_output_us){
         for(const auto & f_ch_to_p : f_output_us_i){
-            output.write((char*)&(f_ch_to_p.x), 4);
-            output.write((char*)&(f_ch_to_p.y), 4);
-            output.write((char*)(f_ch_to_p.d), 2*m*m);
+//        #pragma omp critical
+            {
+                output.write((char*)&(f_ch_to_p.x), 4);
+                output.write((char*)&(f_ch_to_p.y), 4);
+                output.write((char*)(f_ch_to_p.d), 2*m*m);
+            }
+
         }
     }
+
+    #ifdef time_test
+        output.close();
+      auto stop = chrono::high_resolution_clock::now();
+      auto duration = chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+
+      std::ofstream outfile("time.txt", std::ios_base::app | std::ios_base::out);
+
+        #pragma omp parallel
+          {
+            #pragma omp single
+            {
+              outfile<<"Size: " << argv[1] << " Thread: "<<  omp_get_num_threads() << " Time: " << duration.count() << "\n";
+
+            }
+          }
+
+    #endif
+
+
+
+
 
 
     return 0;

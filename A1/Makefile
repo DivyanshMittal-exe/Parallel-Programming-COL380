@@ -20,10 +20,54 @@ comp.o:comp.cpp
 
 
 clean:
-	rm -f exec main.o comp comp.o main main.o
+	rm -f exec main.o comp comp.o main main.o test_case_gen test_case_gen.o main_test.o exec_test
 
 test_1: all
 	./exec input output_test_1
 
 test_2: all
 	./exec input2 output_test_2
+
+
+
+
+analyse: test_case_gen
+#	$(CC) $(CFLAGS) -c -Dtime_test main.cpp -o main_test.o
+#	$(CC) $(CFLAGS) -o exec_test main_test.o $(LDFLAGS)
+	#exec 3> results.txt \
+	for i in {10..18}; do \
+	  ./test_case_gen $i; \
+	  for j in {1,2,4,8,16}; do \
+		real_time=$(echo $(time OMP_NUM_THREADS=$j ./exec test_case_$i output_mmmm) | awk '{print $2}') \
+#		rm output_mmmm; \
+		echo $i $j $real_time; \
+	  done; \
+	  rm test_case_$i; \
+	done
+
+	# Close the file
+	#exec 3>&-
+
+
+	#perf	stat ./exec_test test_case_10 output_10
+	#perf	stat ./exec_test test_case_15 output_15
+	#perf stat ./exec_test test_case_20 output_20
+
+
+gen_test: test_case_gen
+	for i in {11..21}; do \
+  		echo $$i; \
+		./test_case_gen $$i ; \
+		#               ./exec test_case_$$i out_$$i; \
+	done;
+
+
+#	./test_case_gen 10
+#	./test_case_gen 15
+#	./test_case_gen 20
+
+test_case_gen: test_case_gen.o
+	$(CC) $(CFLAGS) -o test_case_gen test_case_gen.o $(LDFLAGS)
+
+test_case_gen.o:test_case_gen.cpp
+	$(CC) $(CFLAGS) -c test_case_gen.cpp
