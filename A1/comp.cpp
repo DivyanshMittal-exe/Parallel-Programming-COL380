@@ -79,6 +79,14 @@ int main(int argc, char *argv[])
     input.read((char*)&m, 4);
     input.read((char*)&k, 4);
 
+    if (argc == 2){
+
+        cout << k << endl;
+
+        return  0;
+    }
+
+
     int n2,m2,k2;
 
     ifstream input2(argv[2], ios::binary);

@@ -16,7 +16,7 @@ int main(int argc, char *argv[]){
     std::random_device rd;
     std::mt19937 gen(rd());
 
-    cout << argv[1];
+//    cout << argv[1];
 
 
     int shift_by = std::stoi(argv[1]);
@@ -26,7 +26,9 @@ int main(int argc, char *argv[]){
     int m = 10;
     int n = 10*num_chunk;
 
-    uniform_int_distribution<> index_dis(0, n - 1);
+    int max_r = n/m;
+
+    uniform_int_distribution<> index_dis(0, max_r - 1);
     uniform_int_distribution<> chunk_dis(0, 255);
 
     set<pair<int,int>> indices;

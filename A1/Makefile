@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -std=c++17 -g -fopenmp -O3
+CFLAGS = -std=c++17 -fopenmp -O3
 ROOT_DIR:= /home/higgboson/Codes/Sem 6/Parallel-Programming-COL380/A1
 LDFLAGS = -L. -lrary
 
@@ -31,27 +31,6 @@ test_2: all
 
 
 
-analyse: test_case_gen
-#	$(CC) $(CFLAGS) -c -Dtime_test main.cpp -o main_test.o
-#	$(CC) $(CFLAGS) -o exec_test main_test.o $(LDFLAGS)
-	#exec 3> results.txt \
-	for i in {10..18}; do \
-	  ./test_case_gen $i; \
-	  for j in {1,2,4,8,16}; do \
-		real_time=$(echo $(time OMP_NUM_THREADS=$j ./exec test_case_$i output_mmmm) | awk '{print $2}') \
-#		rm output_mmmm; \
-		echo $i $j $real_time; \
-	  done; \
-	  rm test_case_$i; \
-	done
-
-	# Close the file
-	#exec 3>&-
-
-
-	#perf	stat ./exec_test test_case_10 output_10
-	#perf	stat ./exec_test test_case_15 output_15
-	#perf stat ./exec_test test_case_20 output_20
 
 
 gen_test: test_case_gen

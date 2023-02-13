@@ -52,6 +52,7 @@ void mult_add(int chunk_size, Chunk<int> &result, const Chunk<unsigned char> &r1
     if (r1.x <= r1.y && r2.x <= r2.y) {
         for (i = 0; i < chunk_size; ++i) {
             for (j = 0; j < chunk_size; ++j) {
+//#pragma omp simd
                 for (k = 0; k < chunk_size; ++k) {
                     result.d[i * chunk_size + k] += r1.d[i * chunk_size + j] * r2.d[j * chunk_size + k];
                 }
@@ -62,6 +63,7 @@ void mult_add(int chunk_size, Chunk<int> &result, const Chunk<unsigned char> &r1
 
         for (j = 0; j < chunk_size; ++j) {
             for (i = 0; i < chunk_size; ++i) {
+//#pragma omp simd
                 for (k = 0; k < chunk_size; ++k) {
                     result.d[i * chunk_size + k] += r1.d[j * chunk_size + i] * r2.d[j * chunk_size + k];
                 }
@@ -71,6 +73,7 @@ void mult_add(int chunk_size, Chunk<int> &result, const Chunk<unsigned char> &r1
     } else if (r1.x <= r1.y && r2.y <= r2.x) {
         for (i = 0; i < chunk_size; ++i) {
             for (k = 0; k < chunk_size; ++k) {
+//#pragma omp simd
                 for (j = 0; j < chunk_size; ++j) {
 
                     result.d[i * chunk_size + k] += r1.d[i * chunk_size + j] * r2.d[k * chunk_size + j];

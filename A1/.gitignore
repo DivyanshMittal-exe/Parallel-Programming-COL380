@@ -5,3 +5,5 @@ output2
 library2.so
 main.o
 comp.o
+test_case_gen.o
+test_case_gen
