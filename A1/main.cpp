@@ -135,9 +135,9 @@ int main(int argc, char *argv[]) {
                 }
 
             }
-
-        }
 #pragma omp taskwait
+        }
+
     }
 
 
@@ -186,9 +186,10 @@ int main(int argc, char *argv[]) {
 
 
             }
+#pragma omp taskwait
         }
 
-#pragma omp taskwait
+
     }
 
 
@@ -207,27 +208,38 @@ int main(int argc, char *argv[]) {
     Chunk<int> zero_chunk(-1,-1,m);
     zero_chunk.clr();
 
-#pragma omp parallel for
-    for (int i = 0; i < f_output_us.size(); ++i) {
-        int j = 0;
-        for (auto it = f_output[i].begin(); it != f_output[i].end();) {
-            auto const &[k_val, chunk_val] = *it;
-            if (memcmp(chunk_val.d, zero_chunk.d, m * m * sizeof(int)) == 0) {
-                it = f_output[i].erase(it);
-#pragma omp critical
-                final_chunk_count --;
-            } else {
-                ++it;
-                f_output_us[i][j] = Chunk<unsigned short>(chunk_val.x, chunk_val.y, m);
-                for (int k = 0; k < m; ++k) {
-                    for (int l = 0; l < m; ++l) {
-                        f_output_us[i][j].d[m * k + l] = min(max_val, chunk_val.d[m * k + l]);
+#pragma omp parallel
+    {
+#pragma omp single
+        {
+            for (int i = 0; i < f_output.size(); ++i) {
+#pragma omp task firstprivate(i) shared(final_chunk_count)
+                {
+                    int j = 0;
+                    for (auto it = f_output[i].begin(); it != f_output[i].end();) {
+                        auto const &[k_val, chunk_val] = *it;
+                        if (memcmp(chunk_val.d, zero_chunk.d, m * m * sizeof(int)) == 0) {
+                            it = f_output[i].erase(it);
+#pragma omp atomic
+                            final_chunk_count--;
+                        } else {
+                            ++it;
+                            f_output_us[i][j] = Chunk<unsigned short>(chunk_val.x, chunk_val.y, m);
+                            for (int k = 0; k < m; ++k) {
+                                for (int l = 0; l < m; ++l) {
+                                    f_output_us[i][j].d[m * k + l] = min(max_val, chunk_val.d[m * k + l]);
+                                }
+                            }
+                            ++j;
+                        }
                     }
                 }
-                ++j;
             }
+#pragma omp taskwait
         }
     }
+
+
 
     ofstream output(argv[2], ios::binary);
 
