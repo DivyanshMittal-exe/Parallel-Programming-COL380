@@ -29,7 +29,7 @@ int main(int argc, char *argv[]){
     int max_r = n/m;
 
     uniform_int_distribution<> index_dis(0, max_r - 1);
-    uniform_int_distribution<> chunk_dis(0, 255);
+    uniform_int_distribution<> chunk_dis(0, 5);
 
     set<pair<int,int>> indices;
 

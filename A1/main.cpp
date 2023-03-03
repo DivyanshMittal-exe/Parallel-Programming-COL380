@@ -8,8 +8,9 @@
 
 #include <chrono>
 
-
 #include "library.hpp"
+
+//#define  time_test
 
 
 using namespace std;
@@ -35,26 +36,42 @@ struct Chunk {
         }
     }
 
-    void clr() {
-        memset(d, 0, sizeof(d));
+    void clr(int m) {
+//        cout << "clearing" << sizeof(d) << endl;
+        memset(d, 0, sizeof(T)*m*m);
 
     }
 
+    const void print() const{
+        cout << x << " " << y;
+
+        int m = 5;
+        for(int i = 0; i < m; ++i){
+            cout << "\n";
+            for (int j = 0; j < m; ++j) {
+                cout << d[i*m + j] << " ";
+            }
+        }
+        cout << "\n";
+    }
 
 };
 
-void mult_add(int chunk_size, Chunk<int> &result, const Chunk<unsigned char> &r1, const Chunk<unsigned char> &r2) {
+void mult_add(int chunk_size, Chunk<unsigned int> &result, const Chunk<unsigned char> &r1, const Chunk<unsigned char> &r2) {
     assert(result.x == r1.x);
     assert(result.y == r2.y);
     assert(r1.y == r2.x);
     int i, j, k;
 
+
+
+
     if (r1.x <= r1.y && r2.x <= r2.y) {
         for (i = 0; i < chunk_size; ++i) {
             for (j = 0; j < chunk_size; ++j) {
-//#pragma omp simd
+//#pragma  omp simd
                 for (k = 0; k < chunk_size; ++k) {
-                    result.d[i * chunk_size + k] += r1.d[i * chunk_size + j] * r2.d[j * chunk_size + k];
+                    result.d[i * chunk_size + k] = Outer(result.d[i * chunk_size + k],Inner((int)r1.d[i * chunk_size + j] , (int)r2.d[j * chunk_size + k])) ;
                 }
             }
         }
@@ -63,9 +80,9 @@ void mult_add(int chunk_size, Chunk<int> &result, const Chunk<unsigned char> &r1
 
         for (j = 0; j < chunk_size; ++j) {
             for (i = 0; i < chunk_size; ++i) {
-//#pragma omp simd
+//#pragma  omp simd
                 for (k = 0; k < chunk_size; ++k) {
-                    result.d[i * chunk_size + k] += r1.d[j * chunk_size + i] * r2.d[j * chunk_size + k];
+                    result.d[i * chunk_size + k] = Outer(result.d[i * chunk_size + k],Inner((int)r1.d[j * chunk_size + i] , (int)r2.d[j * chunk_size + k])) ;
                 }
             }
         }
@@ -73,10 +90,10 @@ void mult_add(int chunk_size, Chunk<int> &result, const Chunk<unsigned char> &r1
     } else if (r1.x <= r1.y && r2.y <= r2.x) {
         for (i = 0; i < chunk_size; ++i) {
             for (k = 0; k < chunk_size; ++k) {
-//#pragma omp simd
+//#pragma  omp simd
                 for (j = 0; j < chunk_size; ++j) {
 
-                    result.d[i * chunk_size + k] += r1.d[i * chunk_size + j] * r2.d[k * chunk_size + j];
+                    result.d[i * chunk_size + k] =Outer(result.d[i * chunk_size + k],  Inner((int)r1.d[i * chunk_size + j] ,(int)r2.d[k * chunk_size + j]));
                 }
             }
         }
@@ -104,7 +121,10 @@ int main(int argc, char *argv[]) {
     input.read((char *) &m, 4);
     input.read((char *) &chunk_count, 4);
 
-    vector<Chunk<unsigned char>> chunks(2 * chunk_count);
+    vector<Chunk<unsigned char>> chunks(chunk_count);
+
+    int i_i_pairs = 0;
+
     set<int> indices;
 
 
@@ -118,48 +138,66 @@ int main(int argc, char *argv[]) {
 
         chunks[i] = Chunk<unsigned char>(x, y, m);
 
+
+
         input.read((char *) (chunks[i].d), m * m);
 
-
-    }
-
-#pragma omp parallel
-    {
-#pragma omp single
-        {
-            for (int i = 0; i < chunk_count; ++i) {
-
-#pragma task
-                {
-                    chunks[chunk_count + i] = chunks[i];
-                    chunks[chunk_count + i].x = chunks[i].y;
-                    chunks[chunk_count + i].y = chunks[i].x;
-
-                }
-
-            }
-#pragma omp taskwait
+        if(x == y){
+            i_i_pairs ++;
         }
 
+
     }
+
+    for (int i = 0; i < chunk_count; ++i) {
+
+        if(chunks[i].x != chunks[i].y){
+            Chunk<unsigned char> new_chunk = chunks[i];
+            new_chunk.x = chunks[i].y;
+            new_chunk.y = chunks[i].x;
+            chunks.push_back(new_chunk);
+        }
+    }
+
+//
+//#pragma  omp parallel
+//    {
+//#pragma  omp single
+//        {
+//            for (int i = 0; i < chunk_count; ++i) {
+//
+//#pragma  task
+//                {
+//                    chunks[chunk_count + i] = chunks[i];
+//                    chunks[chunk_count + i].x = chunks[i].y;
+//                    chunks[chunk_count + i].y = chunks[i].x;
+//
+//                }
+//
+//            }
+//#pragma  omp taskwait
+//        }
+//
+//    }
+//
 
 
     sort(chunks.begin(), chunks.end());
 
-    vector<map<int, Chunk<int>>> f_output(indices.size());
+    vector<map<int, Chunk<unsigned int>>> f_output(indices.size());
 
 
     vector<int> indices_vec(indices.begin(), indices.end());
 
 
-#pragma omp parallel
+#pragma  omp parallel
     {
-#pragma omp single
+#pragma  omp single
         {
 
 
             for (int ind_index = 0; ind_index < indices_vec.size(); ind_index++) {
-#pragma omp task shared(f_output, chunks, indices_vec, m) firstprivate(ind_index)
+#pragma  omp task shared(f_output, chunks, indices_vec, m) firstprivate(ind_index)
                 {
                     int i_index = indices_vec[ind_index];
 
@@ -175,8 +213,8 @@ int main(int argc, char *argv[]) {
 
 
                             if (f_output[ind_index].count(k_index) == 0) {
-                                f_output[ind_index][k_index] = Chunk<int>(i_index, k_index, m);
-                                f_output[ind_index][k_index].clr();
+                                f_output[ind_index][k_index] = Chunk<unsigned int>(i_index, k_index, m);
+                                f_output[ind_index][k_index].clr(m);
                             }
 
                             mult_add(m, f_output[ind_index][k_index], *row_element, *col_element);
@@ -189,7 +227,7 @@ int main(int argc, char *argv[]) {
 
 
             }
-#pragma omp taskwait
+#pragma  omp taskwait
         }
 
 
@@ -197,7 +235,7 @@ int main(int argc, char *argv[]) {
 
 
     int final_chunk_count = 0;
-#pragma omp parallel for reduction(+:final_chunk_count)
+#pragma  omp parallel for reduction(+:final_chunk_count)
     for (int i = 0; i < f_output.size(); i++) {
         final_chunk_count += f_output[i].size();
     }
@@ -208,29 +246,38 @@ int main(int argc, char *argv[]) {
     }
 
     const int max_val = 0xFFFF;
-    Chunk<int> zero_chunk(-1,-1,m);
-    zero_chunk.clr();
+    Chunk<unsigned int> zero_chunk(-1,-1,m);
+    zero_chunk.clr(m);
 
-#pragma omp parallel
+#pragma  omp parallel
     {
-#pragma omp single
+#pragma  omp single
         {
             for (int i = 0; i < f_output.size(); ++i) {
-#pragma omp task firstprivate(i) shared(final_chunk_count)
+#pragma  omp task firstprivate(i) shared(final_chunk_count,f_output,m,zero_chunk,f_output_us) default(none)
                 {
                     int j = 0;
                     for (auto it = f_output[i].begin(); it != f_output[i].end();) {
                         auto const &[k_val, chunk_val] = *it;
                         if (memcmp(chunk_val.d, zero_chunk.d, m * m * sizeof(int)) == 0) {
                             it = f_output[i].erase(it);
-#pragma omp atomic
+#pragma  omp atomic
                             final_chunk_count--;
                         } else {
                             ++it;
                             f_output_us[i][j] = Chunk<unsigned short>(chunk_val.x, chunk_val.y, m);
                             for (int k = 0; k < m; ++k) {
                                 for (int l = 0; l < m; ++l) {
-                                    f_output_us[i][j].d[m * k + l] = min(max_val, chunk_val.d[m * k + l]);
+//                                     f_output_us[i][j].d[m * k + l] =  chunk_val.d[m * k + l];
+
+                                    if(chunk_val.d[m * k + l] < max_val){
+                                        f_output_us[i][j].d[m * k + l] =  chunk_val.d[m * k + l];
+                                    }else{
+                                        f_output_us[i][j].d[m * k + l] = max_val;
+                                    }
+
+
+
                                 }
                             }
                             ++j;
@@ -238,7 +285,7 @@ int main(int argc, char *argv[]) {
                     }
                 }
             }
-#pragma omp taskwait
+#pragma  omp taskwait
         }
     }
 
@@ -252,11 +299,11 @@ int main(int argc, char *argv[]) {
     output.write((char *) &final_chunk_count, 4);
 
 
-//    #pragma omp parallel for
+//    #pragma  omp parallel for
     for (int i = 0; i < f_output.size(); ++i) {
         for (int j = 0; j < f_output[i].size(); ++j) {
             const auto &f_ch_to_p = f_output_us[i][j];
-//        #pragma omp critical
+//        #pragma  omp critical
             {
                 output.write((char *) &(f_ch_to_p.x), 4);
                 output.write((char *) &(f_ch_to_p.y), 4);
@@ -267,23 +314,13 @@ int main(int argc, char *argv[]) {
     }
 
 #ifdef time_test
+
     output.close();
   auto stop = chrono::high_resolution_clock::now();
   auto duration = chrono::duration_cast<std::chrono::milliseconds>(stop - start);
 
-  std::ofstream outfile("time.txt", std::ios_base::app | std::ios_base::out);
-
-#pragma omp parallel
-      {
-#pragma omp single
-        {
-          outfile<<"Size: " << argv[1] << " Thread: "<<  omp_get_num_threads() << " Time: " << duration.count() << "\n";
-
-        }
-      }
-
+    cout << duration.count() ;
 #endif
-
 
     return 0;
 }

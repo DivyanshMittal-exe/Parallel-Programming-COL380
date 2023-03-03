@@ -34,14 +34,24 @@ struct Chunk {
         }
     }
 
-    bool operator==(const Chunk& other) const {
+    bool operator==(const Chunk<T>& other) const {
         if (x != other.x || y != other.y || m != other.m) {
             return false;
         }
 
+//        if(x == 8 && y == 1121){
+//            for (int i = 0; i <m; i++) {
+//                for (int j = 0; j < m; j++) {
+//                    cout << d[m*i + j] << " ";
+//                }
+//            }
+//            cout << endl;
+//
+//        }
+
         for (int i = 0; i <m; i++) {
             for (int j = 0; j < m; j++) {
-                if (d[m*i + j] != d[m*i + j]) {
+                if (d[m*i + j] != other.d[m*i + j]) {
                     return false;
                 }
             }
@@ -51,6 +61,8 @@ struct Chunk {
 
     const void print() const{
         cout << x << " " << y;
+
+
         for(int i = 0; i < m; ++i){
             cout << "\n";
             for (int j = 0; j < m; ++j) {
@@ -116,14 +128,24 @@ int main(int argc, char *argv[])
         input.read((char*)&y, 4);
 
 
+
         chunks[i] = Chunk<unsigned short>(x,y,m);
 
         input.read((char *)(chunks[i].d), 2 * m *  m);
 
 
     }
+
+    for(auto chunk:chunks){
+        if(chunk.x == chunk.y){
+            cout << "Hm " << chunk.x << endl;
+        }
+
+//        cout << chunk.x << " " << chunk.y << endl;
+    }
+
     sort(chunks.begin(), chunks.end());
-//
+////
 //    for (int i = 0; i < chunks.size(); ++i) {
 //        chunks[i].print();
 //    }
@@ -154,6 +176,16 @@ int main(int argc, char *argv[])
 
     sort(chunks2.begin(), chunks2.end());
 
+    for(auto chunk:chunks2){
+        if(chunk.x == chunk.y){
+            cout << "Hm " << chunk.x << endl;
+        }
+
+//        cout << chunk.x << " " << chunk.y << endl;
+    }
+
+    sort(chunks.begin(), chunks.end());
+
 //    for (int i = 0; i < chunks2.size(); ++i) {
 //        chunks2[i].print();
 //    }
@@ -165,7 +197,7 @@ int main(int argc, char *argv[])
     cout << endl;
     cout << endl;
 
-
+    int t = 0;
     bool equal = true;
     if (n != n2 || m != m2 || k != k2) {
         equal = false;
@@ -182,11 +214,13 @@ int main(int argc, char *argv[])
                 chunks2[i].print();
 
                 equal = false;
+                ++t;
                 break;
             }
         }
     }
 
+    cout << t;
     if (equal) {
         cout << "equal" << endl;
     } else {
