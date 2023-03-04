@@ -98,6 +98,17 @@ int main(int argc, char *argv[]) {
         // 0 to avg_work_chunk-1 => 0, avg_work_chunk to 2*avg_work_chunk-1 => 1... Seems correct
     }
 
+    map<pair<int,int>,int> tau_hat_e;
+
+    for(const auto &node_g: graph){
+        for(const auto &node_g_n: node_g.neighbours){
+
+            tau_hat_e[{node_g.node_val,node_g_n.node_val}] = 0;
+
+        }
+    }
+
+    // Here aggregate the total number of queries to be made, maybe have a struct of queries or something
 
     return 0;
 }
