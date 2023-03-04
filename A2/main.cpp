@@ -18,15 +18,15 @@ struct node_neighbour {
 struct node {
     int node_val;
     int node_deg;
-    node_neighbour* neighbours;
-//    vector<node_neighbour> neighbours;
+//    node_neighbour* neighbours;
+    vector<node_neighbour> neighbours;
 
     node(){}
-    node(int val, int deg) : node_val(val), node_deg(deg){
-        neighbours = (node_neighbour*)calloc(node_deg,sizeof(node_neighbour));
-    }
-//    node(int val, int deg) : node_val(val), node_deg(deg), neighbours(deg) {
+//    node(int val, int deg) : node_val(val), node_deg(deg){
+//        neighbours = (node_neighbour*)calloc(node_deg,sizeof(node_neighbour));
 //    }
+    node(int val, int deg) : node_val(val), node_deg(deg), neighbours(deg) {
+    }
 };
 
 
@@ -70,31 +70,33 @@ int main(int argc, char *argv[]) {
 
 
         auto new_node = node(node_deg,node_val);
-        MPI_File_read_at_all(input_data, my_chunk_offsets[i] + 8, new_node.neighbours, 2*node_deg, MPI_INT , MPI_STATUS_IGNORE);
+        MPI_File_read_at_all(input_data, my_chunk_offsets[i] + 8, new_node.neighbours.data(), 2*node_deg, MPI_INT , MPI_STATUS_IGNORE);
 
         graph.push_back(new_node);
 
     }
 
+    MPI_Datatype MPI_NODE_VAL_ONLY_ARRAY_MINE;
+
+    //   I think this is smart, but might be something dumb as well. Lol, can break IDK
+    MPI_Type_vector(avg_work_chunk, 4, sizeof (node), MPI_CHAR, &MPI_NODE_VAL_ONLY_ARRAY_MINE);
+    MPI_Type_commit(&MPI_NODE_VAL_ONLY_ARRAY_MINE);
 
 
-    // ifstream input(argv[1], ios::binary);
+    int vertex_node[size*avg_work_chunk];
+    memset(vertex_node,0,4*size*avg_work_chunk);
 
 
-    // input.read((char *) &n, 4);
-    // input.read((char *) &m, 4);
+    MPI_Allgather(graph.data(), 1, MPI_NODE_VAL_ONLY_ARRAY_MINE, vertex_node, avg_work_chunk, MPI_INT, MPI_COMM_WORLD);
+    
+    map<int,int> node_mapping;
 
-    // vector<node> graph(n);
 
-    // for (int i = 0; i < n; ++i) {
-    //     int node_val = 0,node_deg =0;
-    //     input.read((char *) &node_val, 4);
-    //     input.read((char *) &node_deg, 4);
-    //     graph[i] = node(node_deg,node_val);
-
-    //     input.read((char *) &(graph[i].neighbours), 4*2*node_deg);
-
-    // }
+    // Here iteration only till n
+    for (int i = 0; i < n; ++i) {
+        node_mapping[vertex_node[i]] = i/avg_work_chunk;
+        // 0 to avg_work_chunk-1 => 0, avg_work_chunk to 2*avg_work_chunk-1 => 1... Seems correct
+    }
 
 
     return 0;
