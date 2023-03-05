@@ -9,6 +9,34 @@
 
 using namespace std;
 
+const int INF = INT_MAX;
+
+struct Tri_Struct {
+    int u, v, w;
+
+    Tri_Struct(int u, int v, int w) {
+        int vertices[] = {u, v, w};
+        std::sort(vertices, vertices + 3);
+        this->u = vertices[0];
+        this->v = vertices[1];
+        this->w = vertices[2];
+    }
+
+    bool operator<(const Tri_Struct& other) const {
+        if (u != other.u) {
+            return u < other.u;
+        } else if (v != other.v) {
+            return v < other.v;
+        } else {
+            return w < other.w;
+        }
+    }
+
+    bool operator==(const Tri_Struct& other) const {
+        return ((u == other.u) && (v == other.v) && (w == other.w))
+    }
+};
+
 
 struct query_struct{
     int u;
@@ -81,6 +109,9 @@ int main(int argc, char *argv[]) {
         graph.push_back(new_node);
 
     }
+    // Uptill here graph reading for each node
+
+
 
     MPI_Datatype MPI_NODE_VAL_ONLY_ARRAY_MINE;
 
@@ -93,8 +124,12 @@ int main(int argc, char *argv[]) {
     memset(vertex_node,0,4*size*avg_work_chunk);
 
 
+    // Now this line helps gather info who has which node
     MPI_Allgather(graph.data(), 1, MPI_NODE_VAL_ONLY_ARRAY_MINE, vertex_node, avg_work_chunk, MPI_INT, MPI_COMM_WORLD);
-    
+
+
+
+    // Mapping of nodes
     map<int,int> node_mapping;
 
 
@@ -104,6 +139,8 @@ int main(int argc, char *argv[]) {
         // 0 to avg_work_chunk-1 => 0, avg_work_chunk to 2*avg_work_chunk-1 => 1... Seems correct
     }
 
+
+    // Now I start making Tau Hat
     map<pair<int,int>,int> tau_hat_e;
 
 
@@ -118,6 +155,7 @@ int main(int argc, char *argv[]) {
 
 
 
+    // Tau Hat queies stored here
     vector<vector<query_struct>> queries_for_tau(size);
 
     // Here aggregate the total number of queries to be made, maybe have a struct of queries or something
@@ -139,7 +177,10 @@ int main(int argc, char *argv[]) {
 //        ind.push_back({-1,-1});
 //    }
 
+    // Gathers how much data each guy will send
     vector<int> recv_counts(size);
+
+    // Each node does it so gather for this node only if i == rank. Recv parameters only relevant then
     for (int i = 0; i < size; ++i) {
         int send_size = queries_for_tau[i].size();
         MPI_Gather(&send_size, 1, MPI_INT, recvcounts.data(), 1, MPI_INT, i, MPI_COMM_WORLD);
@@ -154,7 +195,6 @@ int main(int argc, char *argv[]) {
     int total_queries = displs[size-1] + recvcounts[size-1];
     vector<query_struct> recv_buf(total_queries);
 
-
     // Query Struct Datatype
     MPI_Datatype MPI_QUERY_STRUCT;
 
@@ -165,20 +205,54 @@ int main(int argc, char *argv[]) {
     MPI_Type_create_struct(2, block_lengths, displacements, types, &MPI_QUERY_STRUCT);
     MPI_Type_commit(&MPI_QUERY_STRUCT);
 
-
-
+    // MPI Gathering all queries
     for (int i = 0; i < size; ++i) {
         MPI_Gatherv(queries_for_tau[i].data(), queries_for_tau[i].size(), MPI_QUERY_STRUCT, recv_buf.data(), recv_counts.data(), displs.data(), MPI_QUERY_STRUCT, i, MPI_COMM_WORLD);
     }
 
 
     // Here we get final tau_hat = supp + 2, as 2 was initialised in the start
+    vector<char> ret_for_tri(total_queries,0);
 
-    for (const auto& query : recv_buf) {
-        int u = query.u;
-        int v = query.v;
-        if(tau_hat_e.count({u,v}))
+
+    for(int i = 0; i < total_queries; i++){
+        int u = recv_buf[i].u;
+        int v = recv_buf[i].v;
+        if(tau_hat_e.count({u,v})){
             tau_hat_e[{u,v}]++;
+            ret_for_tri[i] = 1;
+        }
+    }
+
+
+    // Now the code to return existance of edge back
+    vector<int> displs_for_tri_recv(size + 1);
+    displs_for_tri_recv[0] = 0;
+    for(int i = 1; i < size+1; i++){
+        displs_for_tri_recv[i] = displs_for_tri_recv[i-1] + queries_for_tau[i-1].size();
+    }
+
+    vector<char> tri_recv_buf(displs_for_tri_recv[size]);
+
+    for (int i = 0; i < size; ++i) {
+        MPI_Scatterv(ret_for_tri.data(),recv_counts.data(), displs.data(),MPI_CHAR, &tri_recv_buf[displs_for_tri_recv[i]], queries_for_tau[i].size(), MPI_CHAR, i, MPI_COMM_WORLD);
+    }
+
+    map<Tri_Struct,int> tau_hat_tri;
+
+    int q_it = 0;
+
+    for(const auto &node_g: graph){
+        for(const auto &node_g_n_1: node_g.neighbours){
+            for(const auto &node_g_n_2: node_g.neighbours){
+                if(node_g_n_1!=node_g_n_2) {
+                    if (tri_recv_buf[q_it] == 1) {
+                        tau_hat_tri[Tri_Struct(node_g.node_val,node_g_n_1.node_val,node_g_n_2.node_val)] = INF;
+                    }
+                    q_it ++;
+                }
+            }
+        }
     }
 
 
