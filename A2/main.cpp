@@ -206,9 +206,16 @@ int main(int argc, char *argv[]) {
     MPI_Type_commit(&MPI_QUERY_STRUCT);
 
     // MPI Gathering all queries
-    for (int i = 0; i < size; ++i) {
-        MPI_Gatherv(queries_for_tau[i].data(), queries_for_tau[i].size(), MPI_QUERY_STRUCT, recv_buf.data(), recv_counts.data(), displs.data(), MPI_QUERY_STRUCT, i, MPI_COMM_WORLD);
-    }
+
+
+//    for (int i = 0; i < size; ++i) {
+//        MPI_Gatherv(queries_for_tau[i].data(), queries_for_tau[i].size(), MPI_QUERY_STRUCT, recv_buf.data(), recv_counts.data(), displs.data(), MPI_QUERY_STRUCT, i, MPI_COMM_WORLD);
+//    }
+
+    // Check if this Allgatherv is correct
+    MPI_Allgatherv(queries_for_tau[rank].data(), queries_for_tau[rank].size(), MPI_QUERY_STRUCT,
+                   recv_buf.data(), recv_counts.data(), displs.data(), MPI_QUERY_STRUCT, MPI_COMM_WORLD);
+
 
 
     // Here we get final tau_hat = supp + 2, as 2 was initialised in the start
@@ -227,16 +234,29 @@ int main(int argc, char *argv[]) {
 
     // Now the code to return existance of edge back
     vector<int> displs_for_tri_recv(size + 1);
+    vector<int> count_for_tri_recv(size);
     displs_for_tri_recv[0] = 0;
     for(int i = 1; i < size+1; i++){
+
+        count_for_tri_recv[i-1] = queries_for_tau[i-1].size();
         displs_for_tri_recv[i] = displs_for_tri_recv[i-1] + queries_for_tau[i-1].size();
     }
 
     vector<char> tri_recv_buf(displs_for_tri_recv[size]);
 
+
+
+
     for (int i = 0; i < size; ++i) {
         MPI_Scatterv(ret_for_tri.data(),recv_counts.data(), displs.data(),MPI_CHAR, &tri_recv_buf[displs_for_tri_recv[i]], queries_for_tau[i].size(), MPI_CHAR, i, MPI_COMM_WORLD);
     }
+
+    // Check this as well
+    // Needs obv changes
+//    MPI_Alltoallv(ret_for_tri.data(), count_for_tri_recv.data(), displs_for_tri_recv.data(), MPI_CHAR,
+//                  tri_recv_buf.data(), recv_counts.data(), displs_for_tri_recv.data(), MPI_CHAR,
+//                  MPI_COMM_WORLD);
+
 
     map<Tri_Struct,int> tau_hat_tri;
 
@@ -254,6 +274,30 @@ int main(int argc, char *argv[]) {
             }
         }
     }
+
+
+    map<pair<int,int>,int> g_e;
+    map<pair<pair<int,int>,int>,int> h_e_j;
+
+
+    for (const auto& [key, value] : tau_hat_e) {
+        g_e[key] = value-2;
+        for (int i = 0; i < value; ++i) {
+            h_e_j[{key,i}] = 0;
+         }
+    }
+
+    // Intialisation ends here
+
+    auto k_min_it = min_element(tau_hat_e.begin(), tau_hat_e.end(),[](const auto& a, const auto& b) { return a.second < b.second; });
+    auto k_max_it = max_element(tau_hat_e.begin(), tau_hat_e.end(),[](const auto& a, const auto& b) { return a.second < b.second; });
+    int k_min_loc = k_min_it->second
+    int k_max_loc = k_max_it->second
+
+    int k_min_global;
+    int k_max_global;
+    MPI_Allreduce(&k_min_loc, &k_min_global, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+    MPI_Allreduce(&k_max_loc, &k_max_global, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
 
     return 0;
