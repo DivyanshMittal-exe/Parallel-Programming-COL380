@@ -23,7 +23,6 @@ vector<vector<int>> read_graph_file(string filename) {
 
 int main(int argc, char *argv[]) {
     if (argc != 2 && argc != 3) {
-        cerr << "Usage: " << argv[0] << " <output file>" << endl;
         return 1;
     }
 
@@ -44,18 +43,32 @@ int main(int argc, char *argv[]) {
         num_edges += graph[i].size();
     }
     ofstream out(filename, ios::binary | ios::out);
+
+    string mdat_name = filename + ".m";
+    ofstream mdat(mdat_name.c_str(), ios::binary | ios::out);
+
+    int offset = 0;
     out.write(reinterpret_cast<const char*>(&num_nodes), sizeof(int));
     out.write(reinterpret_cast<const char*>(&num_edges), sizeof(int));
     for (int i = 0; i < num_nodes; i++) {
+        mdat.write(reinterpret_cast<const char*>(&offset), sizeof(int));
         int node_i = i;
         int deg_i = graph[i].size();
+
         out.write(reinterpret_cast<const char*>(&node_i), sizeof(int));
+        offset+=4;
         out.write(reinterpret_cast<const char*>(&deg_i), sizeof(int));
+        offset+=4;
+
         for (int j = 0; j < deg_i; j++) {
             int neighbor_j = graph[i][j];
             int neighbor_j_size = graph[neighbor_j].size();
             out.write(reinterpret_cast<const char*>(&neighbor_j), sizeof(int));
+            offset+=4;
+
             out.write(reinterpret_cast<const char*>(&neighbor_j_size), sizeof(int));
+            offset+=4;
+
         }
     }
     out.close();
