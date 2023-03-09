@@ -22,7 +22,7 @@ int main(int argc, char** argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
     MPI_File input_data;
-    MPI_File_open(MPI_COMM_WORLD, "test0/test-input-0.gra", MPI_MODE_RDONLY, MPI_INFO_NULL, &input_data);
+    MPI_File_open(MPI_COMM_WORLD, "test_case/test0/test-input-0.gra", MPI_MODE_RDONLY, MPI_INFO_NULL, &input_data);
 
     MPI_Aint lb = 0, extent = world_size*sizeof(int);
     MPI_Datatype etype = MPI_INT, filetype, contig;
@@ -37,7 +37,7 @@ int main(int argc, char** argv)
     disp = my_rank*sizeof(int);
 
     MPI_File meta_data;
-    MPI_File_open(MPI_COMM_WORLD, "test0/test-header-0.dat", MPI_MODE_RDONLY, MPI_INFO_NULL, &meta_data);
+    MPI_File_open(MPI_COMM_WORLD, "test_case/test0/test-header-0.dat", MPI_MODE_RDONLY, MPI_INFO_NULL, &meta_data);
 
     MPI_File_set_view(meta_data, disp, etype, filetype, "native", MPI_INFO_NULL);
 
@@ -159,6 +159,8 @@ int main(int argc, char** argv)
     {
         MPI_Gatherv(&(queries[i][0].first),2*queries[i].size(), MPI_INT, recv_queries, length_recv, displ, MPI_INT, i, MPI_COMM_WORLD);
     }
+
+
 
     MPI_Finalize();
 
