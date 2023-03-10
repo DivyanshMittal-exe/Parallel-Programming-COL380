@@ -1,11 +1,11 @@
 CC = g++
 CFLAGS = -std=c++17 -O3
 
-CXX = mpicxx
+CXX = mpic++
 CXXFLAGS = -Wall -Wextra -O3
 
 all:exec
-	./exec
+	mpirun -np 3 ./exec ../test_case/test0/test-input-0.gra ../test_case/test0/test-header-0.dat
 
 exec: main.o
 	$(CXX) $(CXXFLAGS) -o exec main.o
