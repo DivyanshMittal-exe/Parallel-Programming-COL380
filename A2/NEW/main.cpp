@@ -109,6 +109,8 @@ int main(int argc, char *argv[]) {
 //    char inp_f_name[] = "test_case/test0/test-input-0.gra";
 //    char mdt_f_name[] = "test_case/test0/test-header-0.dat";
 
+    ifstream infile(inp_f_name, ios::binary);
+
 
 #if DEBUG_MODE
     cout << "Initialised" << endl;
@@ -154,12 +156,12 @@ int main(int argc, char *argv[]) {
     for (int i = rank; i < n; i+= size) {
         int node_val,node_deg;
 
-        MPI_File_read_at_all(input_data, all_offsets[i], &node_val, 1, MPI_INT , MPI_STATUS_IGNORE);
-        MPI_File_read_at_all(input_data, all_offsets[i] + 4, &node_deg, 1, MPI_INT , MPI_STATUS_IGNORE);
+        MPI_File_read_at(input_data, all_offsets[i], &node_val, 1, MPI_INT , MPI_STATUS_IGNORE);
+        MPI_File_read_at(input_data, all_offsets[i] + 4, &node_deg, 1, MPI_INT , MPI_STATUS_IGNORE);
 
 
         auto new_node = node(node_val,node_deg);
-        MPI_File_read_at_all(input_data, all_offsets[i] + 8, new_node.neighbours.data(), 2*node_deg, MPI_INT , MPI_STATUS_IGNORE);
+        MPI_File_read_at(input_data, all_offsets[i] + 8, new_node.neighbours.data(), 2*node_deg, MPI_INT , MPI_STATUS_IGNORE);
 
 //        graph.push_back(new_node);
 
@@ -225,59 +227,39 @@ int main(int argc, char *argv[]) {
 
 
         int n_val_temp,n_deg_temp;
+//        infile.seekg(all_offsets[i]);
+//
+//        infile.read(reinterpret_cast<char*>(&n_val_temp), sizeof(int));
+//
+//        infile.seekg(all_offsets[i] + 4);
+//
+//        infile.read(reinterpret_cast<char*>(&n_deg_temp), sizeof(int));
+//
+//        node_mapping[n_val_temp] = i % size;
+//
+//        temp.resize(n_deg_temp);
+//        infile.seekg(all_offsets[i] + 8);
+//        infile.read(reinterpret_cast<char*>(temp.data()), 2 * n_deg_temp * sizeof(int));
+
+
+
         MPI_File_read_at_all(input_data, all_offsets[i], &n_val_temp, 1, MPI_INT , MPI_STATUS_IGNORE);
 
-//        if(rank == 0){
-//            cout << "n_val_temp "<< n_val_temp << endl;
-//        }
-
         MPI_File_read_at_all(input_data, all_offsets[i] + 4, &n_deg_temp, 1, MPI_INT , MPI_STATUS_IGNORE);
-//
-//        if(rank == 0){
-//            cout << "n_deg_temp "<< n_deg_temp << endl;
-//        }
 
 
         node_mapping[n_val_temp] = i%size;
 
 
-//#if DEBUG_MODE
-//        if(rank == 0){
-//
-//           cout << n_val_temp << " " << n_deg_temp << endl;
-//        }
-//
-//#endif
-
         temp.resize(n_deg_temp);
         MPI_File_read_at_all(input_data, all_offsets[i] + 8, temp.data(), 2*n_deg_temp, MPI_INT , MPI_STATUS_IGNORE);
-//
-//#if DEBUG_MODE
-//        if(rank == 0){
-//
-//            cout << " New graph" << endl;
-//            cout << rank << " " << n_val_temp << endl;
-//            for(auto x: temp){
-//                cout << x.node_val << " ";
-//            }
-//            cout << endl;
-//        }
-//
-//#endif
+
 
         for(const auto &n_node: temp){
             if(n_val_temp < n_node.node_val){
                 if(edge_to_third_node_map.count({n_val_temp,n_node.node_val})){
 
-//#if DEBUG_MODE
-//                    cout << "Edge queries in loop " << rank << endl;
-//                    cout << n_val_temp << " " << n_node.node_val << endl;
-//                    for(auto x: edge_to_third_node_map[{n_val_temp,n_node.node_val}]){
-//                        cout << "Incrementing " << x << " " << n_val_temp  << " "<< tau_hat_e[{x,n_val_temp}].first << endl;
-//                        cout << "Incrementing " << x << " " << n_node.node_val << " "  <<  tau_hat_e[{x,n_node.node_val}].first << endl ;
-//                    }
-//
-//#endif
+
                     for(auto x: edge_to_third_node_map[{n_val_temp,n_node.node_val}]){
                         tau_hat_e[{x,n_val_temp}].first += 1;
                         tau_hat_e[{x,n_node.node_val}].first += 1;
@@ -313,6 +295,8 @@ int main(int argc, char *argv[]) {
             query_recvcounts[node_mapping[node_g_n_1.node_val]]++;
         }
     }
+
+
     vector<int> query_rdispls(size,0);
     for(int i = 1; i < size; i++){
         query_rdispls[i] = query_rdispls[i-1] + query_recvcounts[i-1];
@@ -436,6 +420,19 @@ int main(int argc, char *argv[]) {
             }
         }
     }
+
+#if DEBUG_MODE
+    for(const auto &tau_it: tau_hat_e){
+        cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
+    }
+
+    for(const auto& tri: tau_hat_tri){
+        cout << "Triangle" << tri.u << " " << tri.v << " " << tri.w << endl;
+    }
+//    cout << "Read graph " << graph.size() << endl;
+#endif
+
+
 
 #endif
 
