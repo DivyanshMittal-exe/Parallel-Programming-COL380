@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    vector<vector<int>> graph = {{1, 2}, {0, 2}, {0, 1}};
+    vector<vector<int>> graph = {{1,2,3,4,5},{0,2,3,4,6},{0,1,3},{0,1,2,4},{0,1,3},{0,6},{1,5}};
 
     string filename;
     if(argc == 2){
@@ -39,9 +39,13 @@ int main(int argc, char *argv[]) {
 
     int num_nodes = graph.size();
     int num_edges = 0;
+
     for (int i = 0; i < num_nodes; i++) {
         num_edges += graph[i].size();
     }
+
+    num_edges/=2;
+
     ofstream out(filename, ios::binary | ios::out);
 
     string mdat_name = filename + ".m";
@@ -49,7 +53,10 @@ int main(int argc, char *argv[]) {
 
     int offset = 0;
     out.write(reinterpret_cast<const char*>(&num_nodes), sizeof(int));
+    offset+=4;
     out.write(reinterpret_cast<const char*>(&num_edges), sizeof(int));
+    offset+=4;
+
     for (int i = 0; i < num_nodes; i++) {
         mdat.write(reinterpret_cast<const char*>(&offset), sizeof(int));
         int node_i = i;

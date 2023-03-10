@@ -5,7 +5,7 @@ CXX = mpic++
 CXXFLAGS = -O3
 
 all:exec
-	mpirun -np 3 ./exec
+	mpirun -np 2 ./exec
 
 exec: main.o
 	$(CXX) $(CXXFLAGS) -o exec main.o
@@ -19,8 +19,8 @@ testcase_maker: testcase_maker.o
 testcase_maker.o: testcase_maker.cpp
 	$(CC) $(CFLAGS) -c -o testcase_maker.o testcase_maker.cpp
 
-test_case: testcase_maker
-	./testcase_maker
+testcase: testcase_maker
+	./testcase_maker sample
 
 clean:
-	rm -f main.o exec test_casemaker.o testcase_maker
+	rm -f main.o exec testcase_maker.o testcase_maker

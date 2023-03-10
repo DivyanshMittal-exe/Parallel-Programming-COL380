@@ -103,9 +103,11 @@ int main(int argc, char *argv[]) {
     MPI_Type_commit(&MPI_QUERY_STRUCT);
 
 
+    char inp_f_name[] = "sample";
+    char mdt_f_name[] = "sample.m";
 
-    char inp_f_name[] = "test_case/test0/test-input-0.gra";
-    char mdt_f_name[] = "test_case/test0/test-header-0.dat";
+//    char inp_f_name[] = "test_case/test0/test-input-0.gra";
+//    char mdt_f_name[] = "test_case/test0/test-header-0.dat";
 
 
 #if DEBUG_MODE
@@ -135,6 +137,9 @@ int main(int argc, char *argv[]) {
 
     #if DEBUG_MODE
         cout << "Read offsets " << all_offsets[rank] << endl;
+        for(int i = 0; i < n; i++){
+            cout << rank << " "<< i << " " << all_offsets[i] << endl;
+        }
     #endif
 
 
@@ -161,13 +166,22 @@ int main(int argc, char *argv[]) {
         graph[node_val] = new_node;
     }
 
-#if DEBUG_MODE
-    cout << "Read graph " << graph.size() << endl;
-#endif
+//#if DEBUG_MODE
+//    cout << "Read graph " << graph.size() << endl;
+//    for (auto x: graph) {
+//        cout << x.second.node_val << endl;
+//        for(auto y: x.second.neighbours){
+//            cout << y.node_val << " ";
+//        }
+//        cout << endl;
+//    }
+//#endif
 
     map<pair<int,int>,vector<int>> edge_to_third_node_map;
 
-    map<pair<int,int>,pair<int,char>> tau_hat_e;
+    // Can change this to int,int,int,char
+    // Or use -ve value to tell done
+    map<pair<int,int>,pair<int,int>> tau_hat_e;
 
     for(const auto &node_g: graph){
         for(const auto &node_g_n_1: node_g.second.neighbours){
@@ -181,6 +195,17 @@ int main(int argc, char *argv[]) {
         }
     }
 
+#if DEBUG_MODE
+    cout << "Edge_to_third_node_map " << rank << endl;
+    for (auto x: edge_to_third_node_map) {
+        cout << x.first.first << " " << x.first.second << endl;
+        for(auto y: x.second){
+            cout << y << " ";
+        }
+        cout << endl;
+    }
+#endif
+
     map<int,int> node_mapping;
 
 
@@ -190,22 +215,72 @@ int main(int argc, char *argv[]) {
 
     for(int i = 0; i < n; i++){
 
+
+//#if DEBUG_MODE
+//        if(rank == 0){
+//            cout << "Index "<< i << endl;
+//        }
+//
+//#endif
+
+
         int n_val_temp,n_deg_temp;
         MPI_File_read_at_all(input_data, all_offsets[i], &n_val_temp, 1, MPI_INT , MPI_STATUS_IGNORE);
 
+//        if(rank == 0){
+//            cout << "n_val_temp "<< n_val_temp << endl;
+//        }
+
         MPI_File_read_at_all(input_data, all_offsets[i] + 4, &n_deg_temp, 1, MPI_INT , MPI_STATUS_IGNORE);
+//
+//        if(rank == 0){
+//            cout << "n_deg_temp "<< n_deg_temp << endl;
+//        }
+
 
         node_mapping[n_val_temp] = i%size;
 
+
+//#if DEBUG_MODE
+//        if(rank == 0){
+//
+//           cout << n_val_temp << " " << n_deg_temp << endl;
+//        }
+//
+//#endif
+
         temp.resize(n_deg_temp);
         MPI_File_read_at_all(input_data, all_offsets[i] + 8, temp.data(), 2*n_deg_temp, MPI_INT , MPI_STATUS_IGNORE);
+//
+//#if DEBUG_MODE
+//        if(rank == 0){
+//
+//            cout << " New graph" << endl;
+//            cout << rank << " " << n_val_temp << endl;
+//            for(auto x: temp){
+//                cout << x.node_val << " ";
+//            }
+//            cout << endl;
+//        }
+//
+//#endif
 
         for(const auto &n_node: temp){
             if(n_val_temp < n_node.node_val){
                 if(edge_to_third_node_map.count({n_val_temp,n_node.node_val})){
+
+//#if DEBUG_MODE
+//                    cout << "Edge queries in loop " << rank << endl;
+//                    cout << n_val_temp << " " << n_node.node_val << endl;
+//                    for(auto x: edge_to_third_node_map[{n_val_temp,n_node.node_val}]){
+//                        cout << "Incrementing " << x << " " << n_val_temp  << " "<< tau_hat_e[{x,n_val_temp}].first << endl;
+//                        cout << "Incrementing " << x << " " << n_node.node_val << " "  <<  tau_hat_e[{x,n_node.node_val}].first << endl ;
+//                    }
+//
+//#endif
                     for(auto x: edge_to_third_node_map[{n_val_temp,n_node.node_val}]){
-                        tau_hat_e[{x,n_val_temp}].first++;
-                        tau_hat_e[{x,n_node.node_val}].first++;
+                        tau_hat_e[{x,n_val_temp}].first += 1;
+                        tau_hat_e[{x,n_node.node_val}].first += 1;
                         tau_hat_tri.insert({x,n_val_temp,n_node.node_val});
                     }
                 }
@@ -214,11 +289,12 @@ int main(int argc, char *argv[]) {
     }
 
 #if DEBUG_MODE
-    for(const auto & tau_it: tau_hat_e){
-        cout << tau_it.first.first << " " tau_it.first.second << " " << tau_it.second.first << " " << tau_it.second.second << endl;
+    for(const auto &tau_it: tau_hat_e){
+        cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
     }
+
     for(const auto& tri: tau_hat_tri){
-        cout << tri.u << " " << tri.v << " " << tri.w;
+        cout << "Triangle" << tri.u << " " << tri.v << " " << tri.w << endl;
     }
 //    cout << "Read graph " << graph.size() << endl;
 #endif
