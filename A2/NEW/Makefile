@@ -5,7 +5,7 @@ CXX = mpic++
 CXXFLAGS = -O3
 
 all:exec
-	mpirun -np 2 ./exec
+	mpirun -np 4 ./exec
 
 exec: main.o
 	$(CXX) $(CXXFLAGS) -o exec main.o

@@ -7,9 +7,11 @@
 #include <climits>
 #include <fstream>
 #include <string.h>
+#include <map>
+
 
 #define DEBUG_MODE 1
-#define EXP_MODE 0
+#define EXP_MODE 1
 
 using namespace std;
 
@@ -270,16 +272,16 @@ int main(int argc, char *argv[]) {
         }
     }
 
-#if DEBUG_MODE
-    for(const auto &tau_it: tau_hat_e){
-        cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
-    }
-
-    for(const auto& tri: tau_hat_tri){
-        cout << "Triangle" << tri.u << " " << tri.v << " " << tri.w << endl;
-    }
-//    cout << "Read graph " << graph.size() << endl;
-#endif
+//#if DEBUG_MODE
+//    for(const auto &tau_it: tau_hat_e){
+//        cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
+//    }
+//
+//    for(const auto& tri: tau_hat_tri){
+//        cout << "Triangle" << tri.u << " " << tri.v << " " << tri.w << endl;
+//    }
+////    cout << "Read graph " << graph.size() << endl;
+//#endif
 
 //    int MPI_Alltoallv(const void *sendbuf, const int *sendcounts,
 //                      const int *sdispls, MPI_Datatype sendtype, void *recvbuf,
@@ -289,12 +291,25 @@ int main(int argc, char *argv[]) {
 #if EXP_MODE
 
 
-    vector<int> query_recvcounts(size,0);
+    // 1 as {-1,-1} query as we have end
+    vector<int> query_recvcounts(size,1);
+
+    //
     for(const auto &node_g: graph){
         for(const auto &node_g_n_1: node_g.second.neighbours){
             query_recvcounts[node_mapping[node_g_n_1.node_val]]++;
         }
     }
+
+#if DEBUG_MODE
+    cout << "Query Recieve Counts "<< rank << " ";
+//    cout << k_min_loc << " " << k_min_global << endl;
+    for(auto x: query_recvcounts){
+        cout << x << " ";
+    }
+    cout << endl;
+#endif
+
 
 
     vector<int> query_rdispls(size,0);
@@ -302,34 +317,39 @@ int main(int argc, char *argv[]) {
         query_rdispls[i] = query_rdispls[i-1] + query_recvcounts[i-1];
     }
 
+#if DEBUG_MODE
+    cout << "Query Displacement "<< rank << " ";
+//    cout << k_min_loc << " " << k_min_global << endl;
+    for(auto x: query_rdispls){
+        cout << x << " ";
+    }
+    cout << endl;
+#endif
+
+
     vector<query_struct> query_recv_buf(query_rdispls[size-1] + query_recvcounts[size-1]);
-
-
-
 
 
     vector<vector<query_struct>> decrement_queries(size);
 
-//    auto k_min_it = min_element(tau_hat_e.begin(), tau_hat_e.end(),[](const auto& a, const auto& b) { return a.second < b.second; });
 
-    auto k_min_it = std::min_element(tau_hat_e.begin(), tau_hat_e.end(),
-                                    [](const auto& a, const auto& b) {
-                                        if (a.second.second == 0 && b.second.second == 0) {
-                                            return a.second.first < b.second.first;
-                                        } else if (a.second.second == 0) {
-                                            return true;
-                                        } else {
-                                            return false;
-                                        }
-                                    });
+    int k_min_loc = INT_MAX;
 
-    assert((k_min_it->second).second == 0);
+    for (auto it = tau_hat_e.begin(); it != tau_hat_e.end(); ++it) {
+        const auto& a = it -> second;
 
-    int k_min_loc = (k_min_it->second).first;
+        if(a.second == 0){
+            k_min_loc = min(k_min_loc,a.first);
+        }
+    }
 
 
     int k_min_global;
     MPI_Allreduce(&k_min_loc, &k_min_global, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+
+#if DEBUG_MODE
+    cout << k_min_loc << " " << k_min_global << endl;
+#endif
 
     for (auto const& pr : tau_hat_e) {
         auto const& edge = pr.first;
@@ -394,11 +414,42 @@ int main(int argc, char *argv[]) {
     query_sendcounts[size-1] = decrement_queries[size-1].size();
 
 
+
+#if DEBUG_MODE
+    cout << "Sent Counts "<< rank << " ";
+//    cout << k_min_loc << " " << k_min_global << endl;
+    for (int i = 0; i < size; ++i) {
+        cout << query_sendcounts[i] << " ";
+    }
+    cout << endl;
+#endif
+
+#if DEBUG_MODE
+    cout << "Sent Displs "<< rank << " ";
+//    cout << k_min_loc << " " << k_min_global << endl;
+    for (int i = 0; i < size; ++i) {
+        cout << query_sdispls[i] << " ";
+    }
+    cout << endl;
+#endif
+
+
+
+
     vector<query_struct> all_together;
     all_together.reserve(query_sendcounts[size-1]  + decrement_queries[size-1].size() );
     for (auto& dec_q_node: decrement_queries){
         move(dec_q_node.begin(), dec_q_node.end(), std::back_inserter(all_together));
     }
+
+#if DEBUG_MODE
+    cout << "All Together "<< rank << " " << all_together.size() << " ";
+    for(auto x: all_together){
+        cout << "{"<<x.u << "," << x.v << "} ";
+    }
+    cout << endl;
+#endif
+
 
 
     MPI_Alltoallv(all_together.data(),query_sendcounts.data(),
@@ -406,6 +457,11 @@ int main(int argc, char *argv[]) {
                   query_recvcounts.data(),query_rdispls.data(),MPI_QUERY_STRUCT,
                   MPI_COMM_WORLD);
 
+#if DEBUG_MODE
+
+ cout << " All to All v done" << endl;
+
+#endif
 
     for(int i = 0;i < size;i++){
         for (int j = query_rdispls[i]; j < query_rdispls[i] + query_recvcounts[i]; ++j) {
