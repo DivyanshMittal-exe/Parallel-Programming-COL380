@@ -10,8 +10,11 @@
 #include <map>
 
 
-#define DEBUG_MODE 1
+#define DEBUG_MODE 0
 #define EXP_MODE 1
+#define VERBOSE_ONE_MODE_CODE 1
+
+# define DEBUG_STAT cout << "Here by " << rank << endl;
 
 using namespace std;
 
@@ -43,6 +46,11 @@ struct Tri_Struct {
     }
 };
 
+
+
+struct tau_edge{
+    int u,v,tau;
+};
 
 
 
@@ -96,12 +104,13 @@ int main(int argc, char *argv[]) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     MPI_Datatype MPI_QUERY_STRUCT;
+    MPI_Datatype type[2] = { MPI_INT, MPI_INT };
+    int blocklen[2] = { 1, 1 };
+    MPI_Aint disp[2];
+    disp[0] = offsetof(query_struct, u);
+    disp[1] = offsetof(query_struct, v);
 
-    int block_lengths[2] = {1, 1};
-    MPI_Aint displacements[2] = {0, sizeof(int)};
-    MPI_Datatype types[2] = {MPI_INT, MPI_INT};
-
-    MPI_Type_create_struct(2, block_lengths, displacements, types, &MPI_QUERY_STRUCT);
+    MPI_Type_create_struct(2, blocklen, disp, type, &MPI_QUERY_STRUCT);
     MPI_Type_commit(&MPI_QUERY_STRUCT);
 
 
@@ -220,30 +229,7 @@ int main(int argc, char *argv[]) {
     for(int i = 0; i < n; i++){
 
 
-//#if DEBUG_MODE
-//        if(rank == 0){
-//            cout << "Index "<< i << endl;
-//        }
-//
-//#endif
-
-
         int n_val_temp,n_deg_temp;
-//        infile.seekg(all_offsets[i]);
-//
-//        infile.read(reinterpret_cast<char*>(&n_val_temp), sizeof(int));
-//
-//        infile.seekg(all_offsets[i] + 4);
-//
-//        infile.read(reinterpret_cast<char*>(&n_deg_temp), sizeof(int));
-//
-//        node_mapping[n_val_temp] = i % size;
-//
-//        temp.resize(n_deg_temp);
-//        infile.seekg(all_offsets[i] + 8);
-//        infile.read(reinterpret_cast<char*>(temp.data()), 2 * n_deg_temp * sizeof(int));
-
-
 
         MPI_File_read_at_all(input_data, all_offsets[i], &n_val_temp, 1, MPI_INT , MPI_STATUS_IGNORE);
 
@@ -291,49 +277,16 @@ int main(int argc, char *argv[]) {
 #if EXP_MODE
 
 
-    // 1 as {-1,-1} query as we have end
-    vector<int> query_recvcounts(size,1);
-
-    //
-    for(const auto &node_g: graph){
-        for(const auto &node_g_n_1: node_g.second.neighbours){
-            query_recvcounts[node_mapping[node_g_n_1.node_val]]++;
-        }
-    }
-
-#if DEBUG_MODE
-    cout << "Query Recieve Counts "<< rank << " ";
-//    cout << k_min_loc << " " << k_min_global << endl;
-    for(auto x: query_recvcounts){
-        cout << x << " ";
-    }
-    cout << endl;
-#endif
+ int max_K_min_so_far = 0;
 
 
-
-    vector<int> query_rdispls(size,0);
-    for(int i = 1; i < size; i++){
-        query_rdispls[i] = query_rdispls[i-1] + query_recvcounts[i-1];
-    }
-
-#if DEBUG_MODE
-    cout << "Query Displacement "<< rank << " ";
-//    cout << k_min_loc << " " << k_min_global << endl;
-    for(auto x: query_rdispls){
-        cout << x << " ";
-    }
-    cout << endl;
-#endif
-
-
-    vector<query_struct> query_recv_buf(query_rdispls[size-1] + query_recvcounts[size-1]);
-
-
-    vector<vector<query_struct>> decrement_queries(size);
+    while (true){
 
 
     int k_min_loc = INT_MAX;
+    vector<vector<query_struct>> decrement_queries(size);
+
+
 
     for (auto it = tau_hat_e.begin(); it != tau_hat_e.end(); ++it) {
         const auto& a = it -> second;
@@ -346,6 +299,12 @@ int main(int argc, char *argv[]) {
 
     int k_min_global;
     MPI_Allreduce(&k_min_loc, &k_min_global, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+
+    if(k_min_global == INT_MAX){
+        break;
+    }
+
+        max_K_min_so_far = max(max_K_min_so_far,k_min_global);
 
 #if DEBUG_MODE
     cout << k_min_loc << " " << k_min_global << endl;
@@ -386,14 +345,21 @@ int main(int argc, char *argv[]) {
         x.push_back({-1,-1});
     }
 
+
+    // Settling the edges
     for (auto & pr : tau_hat_e) {
         auto const& edge = pr.first;
         auto & tau_val = pr.second;
         if(tau_val.first == k_min_global && tau_val.second == 0){
+            tau_val.first = max_K_min_so_far;
             tau_val.second = 1;
         }
     }
 
+
+#if DEBUG_MODE
+    cout << "Edges Settled by " << rank << endl;
+#endif
 
 
 
@@ -406,7 +372,6 @@ int main(int argc, char *argv[]) {
     vector<int> query_sdispls(size,0);
 
 
-
     for (int i = 1; i < size; ++i) {
         query_sendcounts[i-1] = decrement_queries[i-1].size();
         query_sdispls[i] = query_sdispls[i-1] + query_sendcounts[i-1];
@@ -415,32 +380,41 @@ int main(int argc, char *argv[]) {
 
 
 
-#if DEBUG_MODE
-    cout << "Sent Counts "<< rank << " ";
-//    cout << k_min_loc << " " << k_min_global << endl;
-    for (int i = 0; i < size; ++i) {
-        cout << query_sendcounts[i] << " ";
-    }
-    cout << endl;
-#endif
-
-#if DEBUG_MODE
-    cout << "Sent Displs "<< rank << " ";
-//    cout << k_min_loc << " " << k_min_global << endl;
-    for (int i = 0; i < size; ++i) {
-        cout << query_sdispls[i] << " ";
-    }
-    cout << endl;
-#endif
-
-
-
-
     vector<query_struct> all_together;
-    all_together.reserve(query_sendcounts[size-1]  + decrement_queries[size-1].size() );
+    all_together.reserve(query_sdispls[size-1]  + query_sendcounts[size-1]);
     for (auto& dec_q_node: decrement_queries){
         move(dec_q_node.begin(), dec_q_node.end(), std::back_inserter(all_together));
     }
+
+#if DEBUG_MODE
+        cout << "All Queries set by " << rank << endl;
+#endif
+
+
+//    DEBUG_STAT
+    vector<int> query_recvcounts(size,0);
+
+    MPI_Alltoall(query_sendcounts.data(),1,MPI_INT,query_recvcounts.data(),1,MPI_INT,MPI_COMM_WORLD);
+
+    DEBUG_STAT
+
+
+    vector<int> query_rdispls(size,0);
+
+    for(int i = 1; i < size; i++){
+        query_rdispls[i] = query_rdispls[i-1] + query_recvcounts[i-1];
+    }
+
+#if DEBUG_MODE
+
+        cout << "query_recv_buf set by " << rank << endl;
+#endif
+    vector<query_struct> query_recv_buf(query_rdispls[size-1] + query_recvcounts[size-1]);
+
+
+
+//    vector<query_struct> all_together(size);
+
 
 #if DEBUG_MODE
     cout << "All Together "<< rank << " " << all_together.size() << " ";
@@ -449,6 +423,45 @@ int main(int argc, char *argv[]) {
     }
     cout << endl;
 #endif
+
+
+#if DEBUG_MODE
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    cout << " My Rank is" << rank << endl;
+
+    cout << "Send data size: " << all_together.size() << endl;
+
+    cout << "Send Count :{";
+    for(auto qs: query_sendcounts){
+        cout << qs << ", ";
+    }
+    cout << "}" << endl;
+
+    cout << "Send Displs :{";
+    for(auto qs: query_sdispls){
+        cout << qs << ", ";
+    }
+    cout << "}" << endl;
+
+    cout << "Recv data size: " << query_recv_buf.size() << endl;
+
+
+    cout << "Recv Counts :{";
+    for(auto qs: query_recvcounts){
+        cout << qs << ", ";
+    }
+    cout << "}" << endl;
+
+    cout << "Recv Displs :{";
+    for(auto qs: query_rdispls){
+        cout << qs << ", ";
+    }
+    cout << "}" << endl;
+
+#endif
+
+
 
 
 
@@ -477,10 +490,22 @@ int main(int argc, char *argv[]) {
         }
     }
 
+        for(const auto &tau_it: tau_hat_e){
+            cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
+        }
+        cout << endl;
+        cout << endl;
+
+        MPI_Barrier(MPI_COMM_WORLD);
+        if(rank == 0){
+            cout << "ALL DONE" << endl;
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+
+
+
 #if DEBUG_MODE
-    for(const auto &tau_it: tau_hat_e){
-        cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
-    }
+
 
     for(const auto& tri: tau_hat_tri){
         cout << "Triangle" << tri.u << " " << tri.v << " " << tri.w << endl;
@@ -488,7 +513,14 @@ int main(int argc, char *argv[]) {
 //    cout << "Read graph " << graph.size() << endl;
 #endif
 
+    }
 
+
+#endif
+
+
+#if VERBOSE_ONE_MODE_CODE
+    for(auto const& edge)
 
 #endif
 
