@@ -10,7 +10,7 @@
 #include <map>
 
 
-#define DEBUG_MODE 0
+#define DEBUG_MODE 1
 #define EXP_MODE 1
 #define VERBOSE_ONE_MODE_CODE 1
 
@@ -56,16 +56,19 @@ struct tau_edge{
     int u,v,tau;
 };
 
-
-
-struct query_struct{
-    int u;
-    int v;
-
-    bool operator==(const query_struct& other) const {
-        return ((u == other.u) && (v == other.v));
-    }
+struct decrement_struct{
+    int a,b,c;
 };
+
+
+//struct query_struct{
+//    int u;
+//    int v;
+//
+//    bool operator==(const query_struct& other) const {
+//        return ((u == other.u) && (v == other.v));
+//    }
+//};
 
 
 struct node_neighbour {
@@ -141,15 +144,15 @@ int main(int argc, char *argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    MPI_Datatype MPI_QUERY_STRUCT;
-    MPI_Datatype type[2] = { MPI_INT, MPI_INT };
-    int blocklen[2] = { 1, 1 };
-    MPI_Aint disp[2];
-    disp[0] = offsetof(query_struct, u);
-    disp[1] = offsetof(query_struct, v);
-
-    MPI_Type_create_struct(2, blocklen, disp, type, &MPI_QUERY_STRUCT);
-    MPI_Type_commit(&MPI_QUERY_STRUCT);
+//    MPI_Datatype MPI_QUERY_STRUCT;
+//    MPI_Datatype type[2] = { MPI_INT, MPI_INT };
+//    int blocklen[2] = { 1, 1 };
+//    MPI_Aint disp[2];
+//    disp[0] = offsetof(query_struct, u);
+//    disp[1] = offsetof(query_struct, v);
+//
+//    MPI_Type_create_struct(2, blocklen, disp, type, &MPI_QUERY_STRUCT);
+//    MPI_Type_commit(&MPI_QUERY_STRUCT);
 
 
     MPI_Datatype MPI_TAU_EDGE;
@@ -245,7 +248,16 @@ int main(int argc, char *argv[]) {
     map<pair<int,int>,pair<int,int>> tau_hat_e;
 
     for(const auto &node_g: graph){
+        cout << node_g.second.node_val << ": ";
         for(const auto &node_g_n_1: node_g.second.neighbours){
+            cout << node_g_n_1.node_val << ", ";
+        }
+        cout << endl;
+    }
+
+    for(const auto &node_g: graph){
+        for(const auto &node_g_n_1: node_g.second.neighbours){
+//            assert(node_g.second.node_val != node_g_n_1.node_val);
             tau_hat_e[{node_g.second.node_val,node_g_n_1.node_val}] = {2,0};
             for(const auto &node_g_n_2: node_g.second.neighbours){
                 if(node_g_n_1.node_val < node_g_n_2.node_val){
@@ -257,11 +269,19 @@ int main(int argc, char *argv[]) {
     }
 
 #if DEBUG_MODE
+    for(auto x:tau_hat_e){
+        cout << "{"<< x.first.first << ", " << x.first.second << "},";
+    }
+    cout << endl;
+#endif
+
+
+#if DEBUG_MODE
     cout << "Edge_to_third_node_map " << rank << endl;
     for (auto x: edge_to_third_node_map) {
-        cout << x.first.first << " " << x.first.second << endl;
+        cout << "{" <<x.first.first << ","  << x.first.second << "}: " ;
         for(auto y: x.second){
-            cout << y << " ";
+            cout << y << ", ";
         }
         cout << endl;
     }
@@ -297,6 +317,8 @@ int main(int argc, char *argv[]) {
 
 
                     for(auto x: edge_to_third_node_map[{n_val_temp,n_node.node_val}]){
+                        assert(x != n_val_temp);
+                        assert(x != n_node.node_val);
                         tau_hat_e[{x,n_val_temp}].first += 1;
                         tau_hat_e[{x,n_node.node_val}].first += 1;
                         tau_hat_tri.insert({x,n_val_temp,n_node.node_val});
@@ -333,7 +355,7 @@ int main(int argc, char *argv[]) {
 //        cout << "YOLO" << endl;
 
     int k_min_loc = INT_MAX;
-    vector<vector<query_struct>> decrement_queries(size);
+    vector<vector<decrement_struct>> decrement_queries(size);
 
 
 
@@ -372,18 +394,22 @@ int main(int argc, char *argv[]) {
                 if(neighb.node_val != edge.second && tau_hat_tri.count({edge.first,edge.second,neighb.node_val})){
                     auto &under_consider = tau_hat_e[{edge.first,neighb.node_val}];
 //                     Case where both are min
-                    if(under_consider.first == k_min_global && under_consider.second == 0){
-                        // Only 1 of them sends
-                        if(edge.second < neighb.node_val){
-                            decrement_queries[node_mapping[edge.second]].push_back({edge.second,neighb.node_val});
-                            decrement_queries[node_mapping[neighb.node_val]].push_back({neighb.node_val,edge.second});
 
-                        }
-                    }else{
-                        decrement_queries[node_mapping[edge.second]].push_back({edge.second,neighb.node_val});
-                        decrement_queries[node_mapping[neighb.node_val]].push_back({neighb.node_val,edge.second});
+                        decrement_queries[node_mapping[edge.second]].push_back({edge.second,neighb.node_val, edge.first});
+                        decrement_queries[node_mapping[neighb.node_val]].push_back({neighb.node_val,edge.second,edge.first});
 
-                    }
+//                    if(under_consider.first == k_min_global && under_consider.second == 0){
+//                        // Only 1 of them sends
+//                        if(edge.second < neighb.node_val){
+//                            decrement_queries[node_mapping[edge.second]].push_back({edge.second,neighb.node_val});
+//                            decrement_queries[node_mapping[neighb.node_val]].push_back({neighb.node_val,edge.second});
+//
+//                        }
+//                    }else{
+//                        decrement_queries[node_mapping[edge.second]].push_back({edge.second,neighb.node_val});
+//                        decrement_queries[node_mapping[neighb.node_val]].push_back({neighb.node_val,edge.second});
+//
+//                    }
                 }
             }
         }
@@ -391,7 +417,7 @@ int main(int argc, char *argv[]) {
 
 
     for(auto &x:decrement_queries){
-        x.push_back({-1,-1});
+        x.push_back({-1,-1,-1});
     }
 
 
@@ -429,7 +455,7 @@ int main(int argc, char *argv[]) {
 
 
 
-    vector<query_struct> all_together;
+    vector<decrement_struct> all_together;
     all_together.reserve(query_sdispls[size-1]  + query_sendcounts[size-1]);
     for (auto& dec_q_node: decrement_queries){
         move(dec_q_node.begin(), dec_q_node.end(), back_inserter(all_together));
@@ -458,7 +484,7 @@ int main(int argc, char *argv[]) {
 
         cout << "query_recv_buf set by " << rank << endl;
 #endif
-    vector<query_struct> query_recv_buf(query_rdispls[size-1] + query_recvcounts[size-1]);
+    vector<decrement_struct> query_recv_buf(query_rdispls[size-1] + query_recvcounts[size-1]);
 
 
 
@@ -468,7 +494,7 @@ int main(int argc, char *argv[]) {
 #if DEBUG_MODE
     cout << "All Together "<< rank << " " << all_together.size() << " ";
     for(auto x: all_together){
-        cout << "{"<<x.u << "," << x.v << "} ";
+        cout << "{"<<x.a << "," << x.b << " " << x.c << "} ";
     }
     cout << endl;
 #endif
@@ -515,8 +541,8 @@ int main(int argc, char *argv[]) {
 
 
     MPI_Alltoallv(all_together.data(),query_sendcounts.data(),
-                  query_sdispls.data(),MPI_QUERY_STRUCT,query_recv_buf.data(),
-                  query_recvcounts.data(),query_rdispls.data(),MPI_QUERY_STRUCT,
+                  query_sdispls.data(),MPI_TAU_EDGE,query_recv_buf.data(),
+                  query_recvcounts.data(),query_rdispls.data(),MPI_TAU_EDGE,
                   MPI_COMM_WORLD);
 
 #if DEBUG_MODE
@@ -527,14 +553,16 @@ int main(int argc, char *argv[]) {
 
     for(int i = 0;i < size;i++){
         for (int j = query_rdispls[i]; j < query_rdispls[i] + query_recvcounts[i]; ++j) {
-            if(query_recv_buf[j].u == -1){
+            if(query_recv_buf[j].a == -1){
                 break;
             }
 
-            auto &edge_to_pot_dec = tau_hat_e[{query_recv_buf[j].u,query_recv_buf[j].v}];
-
+            auto &edge_to_pot_dec = tau_hat_e[{query_recv_buf[j].a,query_recv_buf[j].b}];
+            auto &other_edge =  tau_hat_e[{query_recv_buf[j].a,query_recv_buf[j].c}];
             if(edge_to_pot_dec.second == 0){
-                edge_to_pot_dec.first--;
+                if(other_edge.second == 0){
+                    edge_to_pot_dec.first--;
+                }
             }
         }
     }
