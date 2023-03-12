@@ -840,7 +840,7 @@ int main(int argc, char** argv)
     }
     while(edges_remain);
 
-    if(my_rank == 0)
+    // if(my_rank == 0)
     {
 
         for(int i=0; i<my_num_nodes; i++)
