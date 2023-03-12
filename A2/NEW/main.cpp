@@ -14,7 +14,11 @@
 #define EXP_MODE 1
 #define VERBOSE_ONE_MODE_CODE 1
 
-# define DEBUG_STAT cout << "Here by " << rank << endl;
+#if DEBUG_MODE
+    #define DEBUG_STAT cout << "Here by " << rank << endl;
+#else
+    #define DEBUG_STAT ;
+#endif
 
 using namespace std;
 
@@ -25,7 +29,7 @@ struct Tri_Struct {
 
     Tri_Struct(int u, int v, int w) {
         int vertices[] = {u, v, w};
-        std::sort(vertices, vertices + 3);
+        sort(vertices, vertices + 3);
         this->u = vertices[0];
         this->v = vertices[1];
         this->w = vertices[2];
@@ -95,6 +99,40 @@ int main(int argc, char *argv[]) {
 
 
     MPI_Init(&argc, &argv);
+    int task_id = -1;
+    string input_path;
+    string header_path;
+    string output_path;
+    int verbose = -1;
+    int start_k = -1;
+    int end_k = -1;
+    int p = -1;
+
+    for (int i = 1; i < argc; i++) {
+        string arg = argv[i];
+
+        if (arg.find("--taskid=") != string::npos) {
+            task_id = stoi(arg.substr(arg.find("=") + 1));
+        } else if (arg.find("--inputpath=") != string::npos) {
+            input_path = arg.substr(arg.find("=") + 1);
+        } else if (arg.find("--headerpath=") != string::npos) {
+            header_path = arg.substr(arg.find("=") + 1);
+        } else if (arg.find("--outputpath=") != string::npos) {
+            output_path = arg.substr(arg.find("=") + 1);
+        } else if (arg.find("--verbose=") != string::npos) {
+            verbose = stoi(arg.substr(arg.find("=") + 1));
+        } else if (arg.find("--startk=") != string::npos) {
+            start_k = stoi(arg.substr(arg.find("=") + 1));
+        } else if (arg.find("--endk=") != string::npos) {
+            end_k = stoi(arg.substr(arg.find("=") + 1));
+        } else if (arg.find("--p=") != string::npos) {
+            p = stoi(arg.substr(arg.find("=") + 1));
+        }
+    }
+
+
+
+
 
 
 
@@ -114,13 +152,23 @@ int main(int argc, char *argv[]) {
     MPI_Type_commit(&MPI_QUERY_STRUCT);
 
 
-    char inp_f_name[] = "sample";
-    char mdt_f_name[] = "sample.m";
+    MPI_Datatype MPI_TAU_EDGE;
+    int blocklengths[3] = { 1, 1, 1 };
+    MPI_Datatype types[3] = { MPI_INT, MPI_INT, MPI_INT };
+    MPI_Aint offsets[3];
+    offsets[0] = offsetof(struct tau_edge, u);
+    offsets[1] = offsetof(struct tau_edge, v);
+    offsets[2] = offsetof(struct tau_edge, tau);
+    MPI_Type_create_struct(3, blocklengths, offsets, types, &MPI_TAU_EDGE);
+    MPI_Type_commit(&MPI_TAU_EDGE);
+
+//    char inp_f_name[] = input_path;
+//    char mdt_f_name[] = header_path;
 
 //    char inp_f_name[] = "test_case/test0/test-input-0.gra";
 //    char mdt_f_name[] = "test_case/test0/test-header-0.dat";
 
-    ifstream infile(inp_f_name, ios::binary);
+//    ifstream infile(input_path.c_str(), ios::binary);
 
 
 #if DEBUG_MODE
@@ -129,10 +177,10 @@ int main(int argc, char *argv[]) {
 
 
     MPI_File input_data;
-    MPI_File_open(MPI_COMM_WORLD, inp_f_name, MPI_MODE_RDONLY, MPI_INFO_NULL, &input_data);
+    MPI_File_open(MPI_COMM_WORLD, input_path.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &input_data);
 
     MPI_File meta_data;
-    MPI_File_open(MPI_COMM_WORLD, mdt_f_name, MPI_MODE_RDONLY, MPI_INFO_NULL, &meta_data);
+    MPI_File_open(MPI_COMM_WORLD, header_path.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &meta_data);
 
     int n, m;
     MPI_File_read_at_all(input_data, 0, &n, 1, MPI_INT, MPI_STATUS_IGNORE);
@@ -282,6 +330,7 @@ int main(int argc, char *argv[]) {
 
     while (true){
 
+//        cout << "YOLO" << endl;
 
     int k_min_loc = INT_MAX;
     vector<vector<query_struct>> decrement_queries(size);
@@ -306,9 +355,9 @@ int main(int argc, char *argv[]) {
 
         max_K_min_so_far = max(max_K_min_so_far,k_min_global);
 
-#if DEBUG_MODE
+//#if DEBUG_MODE
     cout << k_min_loc << " " << k_min_global << endl;
-#endif
+//#endif
 
     for (auto const& pr : tau_hat_e) {
         auto const& edge = pr.first;
@@ -383,7 +432,7 @@ int main(int argc, char *argv[]) {
     vector<query_struct> all_together;
     all_together.reserve(query_sdispls[size-1]  + query_sendcounts[size-1]);
     for (auto& dec_q_node: decrement_queries){
-        move(dec_q_node.begin(), dec_q_node.end(), std::back_inserter(all_together));
+        move(dec_q_node.begin(), dec_q_node.end(), back_inserter(all_together));
     }
 
 #if DEBUG_MODE
@@ -490,6 +539,9 @@ int main(int argc, char *argv[]) {
         }
     }
 
+
+#if DEBUG_MODE
+
         for(const auto &tau_it: tau_hat_e){
             cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
         }
@@ -504,7 +556,6 @@ int main(int argc, char *argv[]) {
 
 
 
-#if DEBUG_MODE
 
 
     for(const auto& tri: tau_hat_tri){
@@ -516,14 +567,90 @@ int main(int argc, char *argv[]) {
     }
 
 
+//    for(const auto &tau_it: tau_hat_e){
+//        cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
+//    }
+//    cout << endl;
+//    cout << endl;
+
+
+
 #endif
 
 
-#if VERBOSE_ONE_MODE_CODE
-    for(auto const& edge)
 
-#endif
+//    for(int i = start_k; i < end_k; i++){
+//        if(i > max_K_min_so_far){
+//            cout  << "0\n";
+//        }else{
+//            cout << "1\n";
+//        }
+//
+//    }
+//    cout << endl;
 
+//cout << "AM DONE" << endl;
+
+
+    if(verbose == 0){
+
+
+        if(rank == 0){
+//            ofstream output_file(output_path);
+
+            for(int i = start_k; i < end_k; i++){
+                if(i > max_K_min_so_far){
+                    cout  << "0\n";
+                }else{
+                    cout << "1\n";
+                }
+
+            }
+            cout << endl;
+//            output_file.close();
+
+        }
+
+
+
+    }else {
+
+
+        vector <tau_edge> settled_edges;
+
+        for (const auto &tau_it: tau_hat_e) {
+            auto const &edge = tau_it.first;
+            auto const &tau_val = tau_it.second;
+
+            if (edge.first < edge.second) {
+                auto new_tau_edge = tau_edge{edge.first, edge.second, tau_val.first};
+                settled_edges.push_back(new_tau_edge);
+            }
+
+        }
+
+        int my_settle_size = settled_edges.size();
+        vector<int> settled_edge_recv_cnt(size, 0);
+
+        MPI_Allgather(&my_settle_size, 1, MPI_INT, settled_edge_recv_cnt.data(), 1, MPI_INT, MPI_COMM_WORLD);
+
+
+        vector<int> settled_edge_rdispls(size, 0);
+
+        for (int i = 1; i < size; i++) {
+            settled_edge_rdispls[i] = settled_edge_rdispls[i - 1] + settled_edge_recv_cnt[i - 1];
+        }
+
+
+        vector <tau_edge> all_edges(m);
+
+
+        MPI_Allgatherv(settled_edges.data(), settled_edges.size(), MPI_TAU_EDGE,
+                       all_edges.data(), settled_edge_recv_cnt.data(), settled_edge_rdispls.data(),
+                       MPI_TAU_EDGE, MPI_COMM_WORLD);
+
+
+    }
     MPI_Finalize();
 
     return 0;
