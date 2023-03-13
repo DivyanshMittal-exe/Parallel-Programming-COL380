@@ -26,7 +26,9 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    vector<vector<int>> graph = {{1,2,3,4,5},{0,2,3,4,6},{0,1,3},{0,1,2,4},{0,1,3},{0,6},{1,5}};
+//    vector<vector<int>> graph = {{1,2,3,4,5},{0,2,3,4,6},{0,1,3},{0,1,2,4},{0,1,3},{0,6},{1,5}};
+//    vector<vector<int>> graph = {{1},{0,2,3},{1,3},{1,2,4,5}};
+    vector<vector<int>> graph = {{1},{0,2},{1,3,4},{2,4},{2,3,5,6},{4,6,7,8},{4,5,7,8},{5,6,8},{5,6,7};
 
     string filename;
     if(argc == 2){
@@ -46,9 +48,9 @@ int main(int argc, char *argv[]) {
 
     num_edges/=2;
 
-    ofstream out(filename, ios::binary | ios::out);
+    ofstream out(filename + ".gra", ios::binary | ios::out);
 
-    string mdat_name = filename + ".m";
+    string mdat_name = filename + ".dat";
     ofstream mdat(mdat_name.c_str(), ios::binary | ios::out);
 
     int offset = 0;
@@ -72,9 +74,8 @@ int main(int argc, char *argv[]) {
             int neighbor_j_size = graph[neighbor_j].size();
             out.write(reinterpret_cast<const char*>(&neighbor_j), sizeof(int));
             offset+=4;
-
-            out.write(reinterpret_cast<const char*>(&neighbor_j_size), sizeof(int));
-            offset+=4;
+//            out.write(reinterpret_cast<const char*>(&neighbor_j_size), sizeof(int));
+//            offset+=4;
 
         }
     }

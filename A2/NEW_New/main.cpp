@@ -10,7 +10,7 @@
 #include <map>
 
 
-#define DEBUG_MODE 1
+#define DEBUG_MODE 0
 #define EXP_MODE 1
 #define VERBOSE_ONE_MODE_CODE 1
 
@@ -248,6 +248,7 @@ int main(int argc, char *argv[]) {
     for(const auto &node_g: graph){
         for(const auto &node_g_n_1: node_g.second.neighbours){
             tau_hat_e[{node_g.second.node_val,node_g_n_1.node_val}] = {0,0};
+//            assert(node_g.second.node_val != node_g_n_1.node_val);
             for(const auto &node_g_n_2: node_g.second.neighbours){
                 if(node_g_n_1.node_val < node_g_n_2.node_val){
                     edge_to_third_node_map[{node_g_n_1.node_val,node_g_n_2.node_val}].push_back(node_g.second.node_val);
@@ -334,7 +335,6 @@ int main(int argc, char *argv[]) {
 //        cout << "YOLO" << endl;
 
 //        int k_min_loc = INT_MAX;
-        vector <vector<query_struct>> decrement_queries(size);
 
 
         int my_edges = 0;
@@ -361,6 +361,7 @@ int main(int argc, char *argv[]) {
 #endif
 
         while (true) {
+            vector <vector<query_struct>> decrement_queries(size);
 
             cout << k << endl;
             int f_k_count = 0;
@@ -376,7 +377,7 @@ int main(int argc, char *argv[]) {
             int f_k_count_global;
             MPI_Allreduce(&f_k_count, &f_k_count_global, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
-            cout << f_k_count_global << endl;
+//            cout << f_k_count_global << endl;
             if (f_k_count_global == 0) {
                 break;
             }
@@ -553,20 +554,30 @@ int main(int argc, char *argv[]) {
         cout << " All to All v done" << endl;
 
 #endif
+//        for(int i = 0; i < )
 
-        for (int i = 0; i < size; i++) {
-            for (int j = query_rdispls[i]; j < query_rdispls[i] + query_recvcounts[i]; ++j) {
-                if (query_recv_buf[j].u == -1) {
-                    break;
-                }
+        for(auto q: query_recv_buf){
 
-                auto &edge_to_pot_dec = tau_hat_e[{query_recv_buf[j].u, query_recv_buf[j].v}];
+            auto &edge_to_pot_dec = tau_hat_e[{q.u, q.v}];
 
                 if (edge_to_pot_dec.second == 0) {
                     edge_to_pot_dec.first--;
                 }
-            }
         }
+
+//        for (int i = 0; i < size; i++) {
+//            for (int j = query_rdispls[i]; j < query_rdispls[i] + query_recvcounts[i]; ++j) {
+//                if (query_recv_buf[j].u == -1) {
+//                    break;
+//                }
+//
+//                auto &edge_to_pot_dec = tau_hat_e[{query_recv_buf[j].u, query_recv_buf[j].v}];
+//
+//                if (edge_to_pot_dec.second == 0) {
+//                    edge_to_pot_dec.first--;
+//                }
+//            }
+//        }
 
     }
 
@@ -588,9 +599,9 @@ int main(int argc, char *argv[]) {
 
 
 
-    for(const auto& tri: tau_hat_tri){
-        cout << "Triangle" << tri.u << " " << tri.v << " " << tri.w << endl;
-    }
+//    for(const auto& tri: tau_hat_tri){
+//        cout << "Triangle" << tri.u << " " << tri.v << " " << tri.w << endl;
+//    }
 //    cout << "Read graph " << graph.size() << endl;
 #endif
 
@@ -599,10 +610,11 @@ int main(int argc, char *argv[]) {
 
 
     for(const auto &tau_it: tau_hat_e){
-        cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
+        cout << "Truss no. of Edge (" << (tau_it.first).first << " , " << (tau_it.first).second <<") : " << (tau_it.second).first << endl;
+//        cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
     }
-    cout << endl;
-    cout << endl;
+//    cout << endl;
+//    cout << endl;
 
 
 
@@ -642,20 +654,20 @@ int main(int argc, char *argv[]) {
     if(verbose == 0){
 
 
-        if(rank == 0){
-//            ofstream output_file(output_path);
-            cout << k << endl;
-            for(int i = start_k; i < end_k; i++){
-//                if(i > max_K_min_so_far){
-//                    cout  << "0\n";
-//                }else{
-//                    cout << "1\n";
-//                }
-
-            }
-            cout << endl;
-//            output_file.close();
-        }
+//        if(rank == 0){
+////            ofstream output_file(output_path);
+////            cout << k << endl;
+//            for(int i = start_k; i < end_k; i++){
+////                if(i > max_K_min_so_far){
+////                    cout  << "0\n";
+////                }else{
+////                    cout << "1\n";
+////                }
+//
+//            }
+//            cout << endl;
+////            output_file.close();
+//        }
 
     }else {
 
@@ -692,6 +704,26 @@ int main(int argc, char *argv[]) {
         MPI_Allgatherv(settled_edges.data(), settled_edges.size(), MPI_TAU_EDGE,
                        all_edges.data(), settled_edge_recv_cnt.data(), settled_edge_rdispls.data(),
                        MPI_TAU_EDGE, MPI_COMM_WORLD);
+
+
+        vector<vector<pair<int,int>>> final_graph(n);
+
+        for(const auto& tedge: all_edges){
+            final_graph[tedge.u].push_back({tedge.v,tedge.tau});
+            final_graph[tedge.v].push_back({tedge.u,tedge.tau});
+        }
+
+        for(int i = start_k; i < end_k; i++){
+            if(i%size == rank){
+
+                int theta = 0;
+                vector<int> con_comp(n,-1);
+
+
+
+
+            }
+        }
 
 
     }
