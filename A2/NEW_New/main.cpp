@@ -7,6 +7,7 @@
 #include <climits>
 #include <fstream>
 #include <string.h>
+#include <queue>
 #include <map>
 
 
@@ -131,7 +132,7 @@ int main(int argc, char *argv[]) {
     }
 
 
-
+    cout << "Inp " << input_path << endl;
 
 
 
@@ -608,11 +609,11 @@ int main(int argc, char *argv[]) {
         k++;
     }
 
-
-    for(const auto &tau_it: tau_hat_e){
-        cout << "Truss no. of Edge (" << (tau_it.first).first << " , " << (tau_it.first).second <<") : " << (tau_it.second).first << endl;
-//        cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
-    }
+//
+//    for(const auto &tau_it: tau_hat_e){
+//        cout << "Truss no. of Edge (" << (tau_it.first).first << " , " << (tau_it.first).second <<") : " << (tau_it.second).first << endl;
+////        cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
+//    }
 //    cout << endl;
 //    cout << endl;
 
@@ -652,22 +653,32 @@ int main(int argc, char *argv[]) {
 #endif
 
     if(verbose == 0){
+        int max_k_loc = 0;
+        int max_k_glob;
+        for(const auto &tau_it: tau_hat_e){
+            max_k_loc = max(max_k_loc,tau_it.second.first);
+        }
 
 
-//        if(rank == 0){
-////            ofstream output_file(output_path);
-////            cout << k << endl;
-//            for(int i = start_k; i < end_k; i++){
-////                if(i > max_K_min_so_far){
-////                    cout  << "0\n";
-////                }else{
-////                    cout << "1\n";
-////                }
-//
-//            }
-//            cout << endl;
-////            output_file.close();
-//        }
+        MPI_Reduce(&max_k_loc,&max_k_glob,1,MPI_INT,MPI_MAX,0,MPI_COMM_WORLD);
+
+        max_k_glob -= 2;
+
+        if(rank == 0) {
+            string buff = "";
+            for(int i = start_k; i <= end_k; i++){
+                if(i > max_k_glob){
+                    buff += "0\n";
+                }else{
+                    buff += "1\n";
+                }
+            }
+
+            MPI_File outfile;
+            MPI_File_open(MPI_COMM_SELF, output_path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &outfile);
+            MPI_File_write(outfile, buff.c_str(), buff.size(), MPI_CHAR, MPI_STATUS_IGNORE);
+            MPI_File_close(&outfile);
+        }
 
     }else {
 
@@ -690,12 +701,13 @@ int main(int argc, char *argv[]) {
 
         MPI_Allgather(&my_settle_size, 1, MPI_INT, settled_edge_recv_cnt.data(), 1, MPI_INT, MPI_COMM_WORLD);
 
-
         vector<int> settled_edge_rdispls(size, 0);
 
         for (int i = 1; i < size; i++) {
+//            cout << settled_edge_recv_cnt[i-1] << " ";
             settled_edge_rdispls[i] = settled_edge_rdispls[i - 1] + settled_edge_recv_cnt[i - 1];
         }
+        cout << endl;
 
 
         vector <tau_edge> all_edges(m);
@@ -705,6 +717,13 @@ int main(int argc, char *argv[]) {
                        all_edges.data(), settled_edge_recv_cnt.data(), settled_edge_rdispls.data(),
                        MPI_TAU_EDGE, MPI_COMM_WORLD);
 
+#if DEBUG_MODE
+        cout << rank << ": ";
+        for(auto x: all_edges){
+            cout << "{" << x.u << ", " << x.v << ": " << x.tau << "}" ;
+        }
+        cout << endl;
+#endif
 
         vector<vector<pair<int,int>>> final_graph(n);
 
@@ -713,17 +732,66 @@ int main(int argc, char *argv[]) {
             final_graph[tedge.v].push_back({tedge.u,tedge.tau});
         }
 
-        for(int i = start_k; i < end_k; i++){
-            if(i%size == rank){
 
+        int diff_in_k = end_k - start_k + 1;
+        int num_it = diff_in_k/size + (diff_in_k%size != 0);
+
+        int i_start_from = start_k + rank - size;
+
+        MPI_File outfile;
+        MPI_File_open(MPI_COMM_WORLD, output_path.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &outfile);
+
+        for(int i = 0; i < num_it; i++){
+            i_start_from += size;
+            string buff = "";
+            if(i_start_from <= end_k){
                 int theta = 0;
                 vector<int> con_comp(n,-1);
+                for(int i = 0; i < n; i++){
+                    if(con_comp[i] == -1){
+                        deque<int> bfs_q;
+                        int flag = 0;
+                        for(auto n: final_graph[i]){
+                            if(n.second >= i_start_from + 2){
+                                flag = 1;
+                                break;
+                            }
+                        }
+                        if(!flag)
+                            continue;
+                        bfs_q.push_back(i);
+                        while (!bfs_q.empty()){
+                            auto e = bfs_q.front();
+                            bfs_q.pop_front();
+                            con_comp[e] = theta;
+                            for(auto node: final_graph[e]){
+                                if(node.second >= i_start_from + 2 && con_comp[node.first] == -1){
+                                    bfs_q.push_back(node.first);
+                                }
+                            }
+                        }
+                        theta++;
+                    }
+                }
 
-
-
-
+                buff += to_string(theta);
+                buff += "\n";
+                for (int j = 0; j < theta ; ++j) {
+                    for (int l = 0; l < con_comp.size(); ++l) {
+                        if(con_comp[l] == j){
+                            buff += to_string(l);
+                            buff += " ";
+                        }
+                    }
+                    buff += "\n";
+                }
             }
+
+            MPI_File_write_ordered(outfile,buff.c_str(),buff.size(),MPI_CHAR,MPI_STATUS_IGNORE);
+            MPI_Barrier(MPI_COMM_WORLD);
         }
+
+        MPI_File_close(&outfile);
 
 
     }
