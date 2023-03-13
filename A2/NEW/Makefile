@@ -6,7 +6,7 @@ CXXFLAGS = -O3
 
 
 all:exec
-	mpirun -np 4 ./exec --taskid=1 --inputpath=sample --headerpath=sample.m --outputpath=sample_out --verbose=1 --startk=1 --endk=6 --p=0
+	mpirun -np 4 ./exec --taskid=1 --inputpath=sample --headerpath=sample.m --outputpath=sample_out --verbose=0 --startk=1 --endk=6 --p=0
 
 exec: main.o
 	$(CXX) $(CXXFLAGS) -o exec main.o
@@ -27,7 +27,7 @@ clean:
 	rm -f main.o exec testcase_maker.o testcase_maker
 
 test_base: exec
-	mpirun -np 5 ./exec --taskid=1 --inputpath=sample --headerpath=sample.m --outputpath=o_me_0.txt --verbose=1 --startk=1 --endk=10 --p=0
+	mpirun -np 5 ./exec --taskid=1 --inputpath=0.gra --headerpath=0.dat --outputpath=o_me_0.txt --verbose=0 --startk=1 --endk=10 --p=0
 #	mpirun -np 5 ./exec --taskid=1 --inputpath=./test_case/test0/test-input-0.gra --headerpath=./test_case/test0/test-header-0.gra --outputpath=./test_case/test0/o_me_0.txt --verbose=1 --startk=1 --endk=10 --p=0
 	#diff ./test_case/test0/o_me_0.txt ./test_case/test0/output0.txt
 #	mpirun -np 5 ./exec --taskid=1 --inputpath=test-input-1.gra --headerpath=test-header-1.dat --outputpath=o_me_1.txt --verbose=1 --startk=1 --endk=10 --p=0

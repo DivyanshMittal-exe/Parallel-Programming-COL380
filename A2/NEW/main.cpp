@@ -15,9 +15,9 @@
 #define VERBOSE_ONE_MODE_CODE 1
 
 #if DEBUG_MODE
-    #define DEBUG_STAT cout << "Here by " << rank << endl;
+#define DEBUG_STAT cout << "Here by " << rank << endl;
 #else
-    #define DEBUG_STAT ;
+#define DEBUG_STAT ;
 #endif
 
 using namespace std;
@@ -56,24 +56,21 @@ struct tau_edge{
     int u,v,tau;
 };
 
-struct decrement_struct{
-    int a,b,c;
+
+
+struct query_struct{
+    int u;
+    int v;
+
+    bool operator==(const query_struct& other) const {
+        return ((u == other.u) && (v == other.v));
+    }
 };
-
-
-//struct query_struct{
-//    int u;
-//    int v;
-//
-//    bool operator==(const query_struct& other) const {
-//        return ((u == other.u) && (v == other.v));
-//    }
-//};
 
 
 struct node_neighbour {
     int node_val;
-    int node_deg;
+//    int node_deg;
 };
 
 
@@ -144,15 +141,15 @@ int main(int argc, char *argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-//    MPI_Datatype MPI_QUERY_STRUCT;
-//    MPI_Datatype type[2] = { MPI_INT, MPI_INT };
-//    int blocklen[2] = { 1, 1 };
-//    MPI_Aint disp[2];
-//    disp[0] = offsetof(query_struct, u);
-//    disp[1] = offsetof(query_struct, v);
-//
-//    MPI_Type_create_struct(2, blocklen, disp, type, &MPI_QUERY_STRUCT);
-//    MPI_Type_commit(&MPI_QUERY_STRUCT);
+    MPI_Datatype MPI_QUERY_STRUCT;
+    MPI_Datatype type[2] = { MPI_INT, MPI_INT };
+    int blocklen[2] = { 1, 1 };
+    MPI_Aint disp[2];
+    disp[0] = offsetof(query_struct, u);
+    disp[1] = offsetof(query_struct, v);
+
+    MPI_Type_create_struct(2, blocklen, disp, type, &MPI_QUERY_STRUCT);
+    MPI_Type_commit(&MPI_QUERY_STRUCT);
 
 
     MPI_Datatype MPI_TAU_EDGE;
@@ -199,12 +196,13 @@ int main(int argc, char *argv[]) {
     int all_offsets[n];
     MPI_File_read_at_all(meta_data, 0, all_offsets, n, MPI_INT , MPI_STATUS_IGNORE);
 
-    #if DEBUG_MODE
-        cout << "Read offsets " << all_offsets[rank] << endl;
+
+#if DEBUG_MODE
+    cout << "Read offsets " << all_offsets[rank] << endl;
         for(int i = 0; i < n; i++){
             cout << rank << " "<< i << " " << all_offsets[i] << endl;
         }
-    #endif
+#endif
 
 
     map<int,int> node_vertex_map;
@@ -223,7 +221,7 @@ int main(int argc, char *argv[]) {
 
 
         auto new_node = node(node_val,node_deg);
-        MPI_File_read_at(input_data, all_offsets[i] + 8, new_node.neighbours.data(), 2*node_deg, MPI_INT , MPI_STATUS_IGNORE);
+        MPI_File_read_at(input_data, all_offsets[i] + 8, new_node.neighbours.data(), node_deg, MPI_INT , MPI_STATUS_IGNORE);
 
 //        graph.push_back(new_node);
 
@@ -248,16 +246,7 @@ int main(int argc, char *argv[]) {
     map<pair<int,int>,pair<int,int>> tau_hat_e;
 
     for(const auto &node_g: graph){
-        cout << node_g.second.node_val << ": ";
         for(const auto &node_g_n_1: node_g.second.neighbours){
-            cout << node_g_n_1.node_val << ", ";
-        }
-        cout << endl;
-    }
-
-    for(const auto &node_g: graph){
-        for(const auto &node_g_n_1: node_g.second.neighbours){
-//            assert(node_g.second.node_val != node_g_n_1.node_val);
             tau_hat_e[{node_g.second.node_val,node_g_n_1.node_val}] = {2,0};
             for(const auto &node_g_n_2: node_g.second.neighbours){
                 if(node_g_n_1.node_val < node_g_n_2.node_val){
@@ -268,24 +257,16 @@ int main(int argc, char *argv[]) {
         }
     }
 
-#if DEBUG_MODE
-    for(auto x:tau_hat_e){
-        cout << "{"<< x.first.first << ", " << x.first.second << "},";
-    }
-    cout << endl;
-#endif
-
-
-#if DEBUG_MODE
-    cout << "Edge_to_third_node_map " << rank << endl;
-    for (auto x: edge_to_third_node_map) {
-        cout << "{" <<x.first.first << ","  << x.first.second << "}: " ;
-        for(auto y: x.second){
-            cout << y << ", ";
-        }
-        cout << endl;
-    }
-#endif
+//#if DEBUG_MODE
+//    cout << "Edge_to_third_node_map " << rank << endl;
+//    for (auto x: edge_to_third_node_map) {
+//        cout << x.first.first << " " << x.first.second << endl;
+//        for(auto y: x.second){
+//            cout << y << " ";
+//        }
+//        cout << endl;
+//    }
+//#endif
 
     map<int,int> node_mapping;
 
@@ -308,17 +289,13 @@ int main(int argc, char *argv[]) {
 
 
         temp.resize(n_deg_temp);
-        MPI_File_read_at_all(input_data, all_offsets[i] + 8, temp.data(), 2*n_deg_temp, MPI_INT , MPI_STATUS_IGNORE);
+        MPI_File_read_at_all(input_data, all_offsets[i] + 8, temp.data(), n_deg_temp, MPI_INT , MPI_STATUS_IGNORE);
 
 
         for(const auto &n_node: temp){
             if(n_val_temp < n_node.node_val){
                 if(edge_to_third_node_map.count({n_val_temp,n_node.node_val})){
-
-
                     for(auto x: edge_to_third_node_map[{n_val_temp,n_node.node_val}]){
-                        assert(x != n_val_temp);
-                        assert(x != n_node.node_val);
                         tau_hat_e[{x,n_val_temp}].first += 1;
                         tau_hat_e[{x,n_node.node_val}].first += 1;
                         tau_hat_tri.insert({x,n_val_temp,n_node.node_val});
@@ -344,96 +321,96 @@ int main(int argc, char *argv[]) {
 //                      const int *recvcounts, const int *rdispls, MPI_Datatype recvtype,
 //                      MPI_Comm comm)
 
+
 #if EXP_MODE
 
 
- int max_K_min_so_far = 0;
+    int max_K_min_so_far = 0;
 
 
     while (true){
 
 //        cout << "YOLO" << endl;
 
-    int k_min_loc = INT_MAX;
-    vector<vector<decrement_struct>> decrement_queries(size);
+        int k_min_loc = INT_MAX;
+        vector<vector<query_struct>> decrement_queries(size);
 
 
 
-    for (auto it = tau_hat_e.begin(); it != tau_hat_e.end(); ++it) {
-        const auto& a = it -> second;
+        for (auto it = tau_hat_e.begin(); it != tau_hat_e.end(); ++it) {
+            const auto& a = it -> second;
 
-        if(a.second == 0){
-            k_min_loc = min(k_min_loc,a.first);
+            if(a.second == 0){
+                k_min_loc = min(k_min_loc,a.first);
+            }
         }
-    }
 
 
-    int k_min_global;
-    MPI_Allreduce(&k_min_loc, &k_min_global, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+        int k_min_global;
+        MPI_Allreduce(&k_min_loc, &k_min_global, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
 
-    if(k_min_global == INT_MAX){
-        break;
-    }
+        if(k_min_global == INT_MAX){
+            break;
+        }
 
         max_K_min_so_far = max(max_K_min_so_far,k_min_global);
 
-//#if DEBUG_MODE
-    cout << k_min_loc << " " << k_min_global << endl;
-//#endif
+#if DEBUG_MODE
+        cout << "Considering k_min "<< k_min_loc << " " << k_min_global << endl;
+#endif
 
-    for (auto const& pr : tau_hat_e) {
-        auto const& edge = pr.first;
-        auto const& tau_val = pr.second;
+        for (auto const& pr : tau_hat_e) {
+            auto const& edge = pr.first;
+            auto const& tau_val = pr.second;
 
 
-        if(tau_val.first == k_min_global && tau_val.second == 0){
+            if(tau_val.first == k_min_global && tau_val.second == 0){
 
-            auto node_to_enum = graph[edge.first];
-            for(const auto &neighb: node_to_enum.neighbours){
-                // If a triangle exists
-                if(neighb.node_val != edge.second && tau_hat_tri.count({edge.first,edge.second,neighb.node_val})){
-                    auto &under_consider = tau_hat_e[{edge.first,neighb.node_val}];
+                auto node_to_enum = graph[edge.first];
+                for(const auto &neighb: node_to_enum.neighbours){
+                    // If a triangle exists
+                    if(neighb.node_val != edge.second && tau_hat_tri.count({edge.first,edge.second,neighb.node_val})){
+                        auto &under_consider = tau_hat_e[{edge.first,neighb.node_val}];
 //                     Case where both are min
+                        if(under_consider.first == k_min_global && under_consider.second == 0){
+                            // Only 1 of them sends
+                            if(edge.second < neighb.node_val){
+                                decrement_queries[node_mapping[edge.second]].push_back({edge.second,neighb.node_val});
+                                decrement_queries[node_mapping[neighb.node_val]].push_back({neighb.node_val,edge.second});
 
-                        decrement_queries[node_mapping[edge.second]].push_back({edge.second,neighb.node_val, edge.first});
-                        decrement_queries[node_mapping[neighb.node_val]].push_back({neighb.node_val,edge.second,edge.first});
+                            }
+                        }else{
+                            if(under_consider.second == 0){
+                                decrement_queries[node_mapping[edge.second]].push_back({edge.second,neighb.node_val});
+                                decrement_queries[node_mapping[neighb.node_val]].push_back({neighb.node_val,edge.second});
 
-//                    if(under_consider.first == k_min_global && under_consider.second == 0){
-//                        // Only 1 of them sends
-//                        if(edge.second < neighb.node_val){
-//                            decrement_queries[node_mapping[edge.second]].push_back({edge.second,neighb.node_val});
-//                            decrement_queries[node_mapping[neighb.node_val]].push_back({neighb.node_val,edge.second});
-//
-//                        }
-//                    }else{
-//                        decrement_queries[node_mapping[edge.second]].push_back({edge.second,neighb.node_val});
-//                        decrement_queries[node_mapping[neighb.node_val]].push_back({neighb.node_val,edge.second});
-//
-//                    }
+                            }
+
+                        }
+                    }
                 }
             }
         }
-    }
 
 
-    for(auto &x:decrement_queries){
-        x.push_back({-1,-1,-1});
-    }
-
-
-    // Settling the edges
-    for (auto & pr : tau_hat_e) {
-        auto const& edge = pr.first;
-        auto & tau_val = pr.second;
-        if(tau_val.first == k_min_global && tau_val.second == 0){
-            tau_val.first = max_K_min_so_far;
-            tau_val.second = 1;
+        for(auto &x:decrement_queries){
+            x.push_back({-1,-1});
         }
-    }
+
+
+        // Settling the edges
+        for (auto & pr : tau_hat_e) {
+            auto const& edge = pr.first;
+            auto & tau_val = pr.second;
+            if(tau_val.first == k_min_global && tau_val.second == 0){
+                tau_val.first = max_K_min_so_far;
+                tau_val.second = 1;
+            }
+        }
 
 
 #if DEBUG_MODE
-    cout << "Edges Settled by " << rank << endl;
+        cout << "Edges Settled by " << rank << endl;
 #endif
 
 
@@ -443,23 +420,23 @@ int main(int argc, char *argv[]) {
 //                      const int *recvcounts, const int *rdispls, MPI_Datatype recvtype,
 //                      MPI_Comm comm)
 
-    vector<int> query_sendcounts(size,0);
-    vector<int> query_sdispls(size,0);
+        vector<int> query_sendcounts(size,0);
+        vector<int> query_sdispls(size,0);
 
 
-    for (int i = 1; i < size; ++i) {
-        query_sendcounts[i-1] = decrement_queries[i-1].size();
-        query_sdispls[i] = query_sdispls[i-1] + query_sendcounts[i-1];
-    }
-    query_sendcounts[size-1] = decrement_queries[size-1].size();
+        for (int i = 1; i < size; ++i) {
+            query_sendcounts[i-1] = decrement_queries[i-1].size();
+            query_sdispls[i] = query_sdispls[i-1] + query_sendcounts[i-1];
+        }
+        query_sendcounts[size-1] = decrement_queries[size-1].size();
 
 
 
-    vector<decrement_struct> all_together;
-    all_together.reserve(query_sdispls[size-1]  + query_sendcounts[size-1]);
-    for (auto& dec_q_node: decrement_queries){
-        move(dec_q_node.begin(), dec_q_node.end(), back_inserter(all_together));
-    }
+        vector<query_struct> all_together;
+        all_together.reserve(query_sdispls[size-1]  + query_sendcounts[size-1]);
+        for (auto& dec_q_node: decrement_queries){
+            move(dec_q_node.begin(), dec_q_node.end(), back_inserter(all_together));
+        }
 
 #if DEBUG_MODE
         cout << "All Queries set by " << rank << endl;
@@ -467,24 +444,24 @@ int main(int argc, char *argv[]) {
 
 
 //    DEBUG_STAT
-    vector<int> query_recvcounts(size,0);
+        vector<int> query_recvcounts(size,0);
 
-    MPI_Alltoall(query_sendcounts.data(),1,MPI_INT,query_recvcounts.data(),1,MPI_INT,MPI_COMM_WORLD);
+        MPI_Alltoall(query_sendcounts.data(),1,MPI_INT,query_recvcounts.data(),1,MPI_INT,MPI_COMM_WORLD);
 
-    DEBUG_STAT
+        DEBUG_STAT
 
 
-    vector<int> query_rdispls(size,0);
+        vector<int> query_rdispls(size,0);
 
-    for(int i = 1; i < size; i++){
-        query_rdispls[i] = query_rdispls[i-1] + query_recvcounts[i-1];
-    }
+        for(int i = 1; i < size; i++){
+            query_rdispls[i] = query_rdispls[i-1] + query_recvcounts[i-1];
+        }
 
 #if DEBUG_MODE
 
         cout << "query_recv_buf set by " << rank << endl;
 #endif
-    vector<decrement_struct> query_recv_buf(query_rdispls[size-1] + query_recvcounts[size-1]);
+        vector<query_struct> query_recv_buf(query_rdispls[size-1] + query_recvcounts[size-1]);
 
 
 
@@ -492,16 +469,16 @@ int main(int argc, char *argv[]) {
 
 
 #if DEBUG_MODE
-    cout << "All Together "<< rank << " " << all_together.size() << " ";
+        cout << "All Together "<< rank << " " << all_together.size() << " ";
     for(auto x: all_together){
-        cout << "{"<<x.a << "," << x.b << " " << x.c << "} ";
+        cout << "{"<<x.u << "," << x.v << "} ";
     }
     cout << endl;
 #endif
 
 
 #if DEBUG_MODE
-    MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Barrier(MPI_COMM_WORLD);
 
     cout << " My Rank is" << rank << endl;
 
@@ -540,32 +517,30 @@ int main(int argc, char *argv[]) {
 
 
 
-    MPI_Alltoallv(all_together.data(),query_sendcounts.data(),
-                  query_sdispls.data(),MPI_TAU_EDGE,query_recv_buf.data(),
-                  query_recvcounts.data(),query_rdispls.data(),MPI_TAU_EDGE,
-                  MPI_COMM_WORLD);
+        MPI_Alltoallv(all_together.data(),query_sendcounts.data(),
+                      query_sdispls.data(),MPI_QUERY_STRUCT,query_recv_buf.data(),
+                      query_recvcounts.data(),query_rdispls.data(),MPI_QUERY_STRUCT,
+                      MPI_COMM_WORLD);
 
 #if DEBUG_MODE
 
- cout << " All to All v done" << endl;
+        cout << " All to All v done" << endl;
 
 #endif
 
-    for(int i = 0;i < size;i++){
-        for (int j = query_rdispls[i]; j < query_rdispls[i] + query_recvcounts[i]; ++j) {
-            if(query_recv_buf[j].a == -1){
-                break;
-            }
+        for(int i = 0;i < size;i++){
+            for (int j = query_rdispls[i]; j < query_rdispls[i] + query_recvcounts[i]; ++j) {
+                if(query_recv_buf[j].u == -1){
+                    break;
+                }
 
-            auto &edge_to_pot_dec = tau_hat_e[{query_recv_buf[j].a,query_recv_buf[j].b}];
-            auto &other_edge =  tau_hat_e[{query_recv_buf[j].a,query_recv_buf[j].c}];
-            if(edge_to_pot_dec.second == 0){
-                if(other_edge.second == 0){
+                auto &edge_to_pot_dec = tau_hat_e[{query_recv_buf[j].u,query_recv_buf[j].v}];
+
+                if(edge_to_pot_dec.second == 0){
                     edge_to_pot_dec.first--;
                 }
             }
         }
-    }
 
 
 #if DEBUG_MODE
@@ -625,7 +600,7 @@ int main(int argc, char *argv[]) {
 
         if(rank == 0){
 //            ofstream output_file(output_path);
-
+            cout << max_K_min_so_far << endl;
             for(int i = start_k; i < end_k; i++){
                 if(i > max_K_min_so_far){
                     cout  << "0\n";
@@ -636,10 +611,7 @@ int main(int argc, char *argv[]) {
             }
             cout << endl;
 //            output_file.close();
-
         }
-
-
 
     }else {
 
