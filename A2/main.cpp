@@ -2,13 +2,14 @@
 #include <algorithm>
 #include <cassert>
 #include <vector>
-#include <mpi/mpi.h>
+#include <mpi.h>
 #include <set>
 #include <climits>
 #include <fstream>
 #include <string.h>
 #include <queue>
 #include <map>
+#include <bits/stdc++.h>
 
 
 #define DEBUG_MODE 0
@@ -296,10 +297,11 @@ int main(int argc, char *argv[]) {
         for(const auto &n_node_1: temp){
             if(n_node_1.node_val % size == rank){
                 for(const auto &n_node_2: temp){
-                    if(tau_hat_e.count({n_node_1.node_val,n_node_2.node_val}))
+                    if(tau_hat_e.count({n_node_1.node_val,n_node_2.node_val})){
                         tau_hat_e[{n_node_1.node_val,n_node_2.node_val}].first++;
-                    if(n_val_temp < n_node_2.node_val){
-                        tau_hat_tri[{n_val_temp,n_node_2.node_val}] = 0;
+//                        if(n_val_temp < n_node_2.node_val){
+                            tau_hat_tri[{n_val_temp,n_node_2.node_val}] = 2;
+//                        }
                     }
                 }
             }
@@ -373,7 +375,7 @@ int main(int argc, char *argv[]) {
 
 
         int all_edges;
-        MPI_Allreduce(&my_edges, &all_edges, 1, MPI_INT, MPI_LAND, MPI_COMM_WORLD);
+        MPI_Allreduce(&my_edges, &all_edges, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
         if (all_edges == 0) {
             break;
@@ -400,7 +402,7 @@ int main(int argc, char *argv[]) {
 
 
             int f_k_count_global;
-            MPI_Allreduce(&f_k_count, &f_k_count_global, 1, MPI_INT, MPI_LAND, MPI_COMM_WORLD);
+            MPI_Allreduce(&f_k_count, &f_k_count_global, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
             cout << f_k_count_global << endl;
             if (f_k_count_global == 0) {
@@ -456,8 +458,10 @@ int main(int argc, char *argv[]) {
 //            x.push_back({-1, -1});
 //        }
 
+        vector<set<query_struct>> dead_queries(size);
 
-        // Settling the edges
+
+            // Settling the edges
         for (auto &pr: tau_hat_e) {
             auto const &edge = pr.first;
             auto &tau_val = pr.second;
@@ -465,7 +469,15 @@ int main(int argc, char *argv[]) {
                 tau_val.first = k - 1;
                 tau_val.second = 1;
             }
+
+//            for(auto x: )
+
+//            for(auto x: graph[edge.first]){
+//                dead_queries[node_mapping[x]]
+//            }
         }
+
+
 
 
 #if DEBUG_MODE
