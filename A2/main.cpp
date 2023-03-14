@@ -163,13 +163,6 @@ int main(int argc, char *argv[]) {
     MPI_Type_create_struct(3, blocklengths, offsets, types, &MPI_TAU_EDGE);
     MPI_Type_commit(&MPI_TAU_EDGE);
 
-//    char inp_f_name[] = input_path;
-//    char mdt_f_name[] = header_path;
-
-//    char inp_f_name[] = "test_case/test0/test-input-0.gra";
-//    char mdt_f_name[] = "test_case/test0/test-header-0.dat";
-
-//    ifstream infile(input_path.c_str(), ios::binary);
 
 
 #if DEBUG_MODE
@@ -200,17 +193,10 @@ int main(int argc, char *argv[]) {
 
 #if DEBUG_MODE
     cout << "Read offsets " << all_offsets[rank] << endl;
-        for(int i = 0; i < n; i++){
-            cout << rank << " "<< i << " " << all_offsets[i] << endl;
-        }
+//        for(int i = 0; i < n; i++){
+//            cout << rank << " "<< i << " " << all_offsets[i] << endl;
+//        }
 #endif
-
-
-    map<int,int> node_vertex_map;
-
-    int my_num_nodes = (n/size) + (rank < n%size);
-
-//    vector<node> graph;
 
     map<int,node> graph;
 
@@ -224,40 +210,48 @@ int main(int argc, char *argv[]) {
         auto new_node = node(node_val,node_deg);
         MPI_File_read_at(input_data, all_offsets[i] + 8, new_node.neighbours.data(), node_deg, MPI_INT , MPI_STATUS_IGNORE);
 
-//        graph.push_back(new_node);
-
         graph[node_val] = new_node;
+//        #if DEBUG_MODE
+//                cout << "Read node " << node_val << endl;
+//        #endif
     }
 
-//#if DEBUG_MODE
-//    cout << "Read graph " << graph.size() << endl;
-//    for (auto x: graph) {
-//        cout << x.second.node_val << endl;
-//        for(auto y: x.second.neighbours){
-//            cout << y.node_val << " ";
-//        }
-//        cout << endl;
-//    }
-//#endif
+#if DEBUG_MODE
+                cout << "Read nodes " << endl;
+        #endif
+
 
     map<pair<int,int>,vector<int>> edge_to_third_node_map;
-
-    // Can change this to int,int,int,char
-    // Or use -ve value to tell done
     map<pair<int,int>,pair<int,int>> tau_hat_e;
+
+
+
 
     for(const auto &node_g: graph){
         for(const auto &node_g_n_1: node_g.second.neighbours){
             tau_hat_e[{node_g.second.node_val,node_g_n_1.node_val}] = {0,0};
-//            assert(node_g.second.node_val != node_g_n_1.node_val);
-            for(const auto &node_g_n_2: node_g.second.neighbours){
-                if(node_g_n_1.node_val < node_g_n_2.node_val){
-                    edge_to_third_node_map[{node_g_n_1.node_val,node_g_n_2.node_val}].push_back(node_g.second.node_val);
-                }
-//                    queries_for_tau[node_mapping[node_g_n_1]].push_back({node_g_n_1,node_g_n_2});
-            }
         }
     }
+
+//    for(const auto &node_g: graph){
+//        for(const auto &node_g_n_1: node_g.second.neighbours){
+//            tau_hat_e[{node_g.second.node_val,node_g_n_1.node_val}] = {0,0};
+//            for(const auto &node_g_n_2: node_g.second.neighbours){
+//                if(node_g_n_1.node_val < node_g_n_2.node_val){
+////                    #if DEBUG_MODE
+////                        cout << " Enum " << rank << " " << i << ": " <<node_g_n_1.node_val << " " << node_g_n_2.node_val << endl;
+////                    ++i;
+////                    #endif
+//                    edge_to_third_node_map[{node_g_n_1.node_val,node_g_n_2.node_val}].push_back(node_g.second.node_val);
+////                    i++;
+//                }
+//            }
+//        }
+//    }
+
+ #if DEBUG_MODE
+        cout << "Mapped " << endl;
+    #endif
 
 //#if DEBUG_MODE
 //    cout << "Edge_to_third_node_map " << rank << endl;
@@ -273,9 +267,10 @@ int main(int argc, char *argv[]) {
     map<int,int> node_mapping;
 
 
-    set<Tri_Struct> tau_hat_tri;
+//    set<Tri_Struct> tau_hat_tri;
 
-    vector<node_neighbour> temp;
+    map<pair<int,int>,int> tau_hat_tri;
+
 
     for(int i = 0; i < n; i++){
 
@@ -290,27 +285,54 @@ int main(int argc, char *argv[]) {
         node_mapping[n_val_temp] = i%size;
 
 
-        temp.resize(n_deg_temp);
+
+        vector<node_neighbour> temp(n_deg_temp);
+//        temp.resize(n_deg_temp);
         MPI_File_read_at_all(input_data, all_offsets[i] + 8, temp.data(), n_deg_temp, MPI_INT , MPI_STATUS_IGNORE);
 
-
-        for(const auto &n_node: temp){
-            if(n_val_temp < n_node.node_val){
-                if(edge_to_third_node_map.count({n_val_temp,n_node.node_val})){
-                    for(auto x: edge_to_third_node_map[{n_val_temp,n_node.node_val}]){
-                        tau_hat_e[{x,n_val_temp}].first += 1;
-                        tau_hat_e[{x,n_node.node_val}].first += 1;
-                        tau_hat_tri.insert({x,n_val_temp,n_node.node_val});
+//        #if DEBUG_MODE
+//                cout << "Read node " << n_val_temp << " " << n_deg_temp<< endl;
+//        #endif
+        for(const auto &n_node_1: temp){
+            if(n_node_1.node_val % size == rank){
+                for(const auto &n_node_2: temp){
+                    if(tau_hat_e.count({n_node_1.node_val,n_node_2.node_val}))
+                        tau_hat_e[{n_node_1.node_val,n_node_2.node_val}].first++;
+                    if(n_val_temp < n_node_2.node_val){
+                        tau_hat_tri[{n_val_temp,n_node_2.node_val}] = 0;
                     }
                 }
             }
         }
+
+//        for(const auto &n_node: temp){
+//            if(n_val_temp < n_node.node_val){
+//                if(edge_to_third_node_map.count({n_val_temp,n_node.node_val})){
+//                    for(auto x: edge_to_third_node_map[{n_val_temp,n_node.node_val}]){
+//                        tau_hat_e[{x,n_val_temp}].first += 1;
+//                        tau_hat_e[{x,n_node.node_val}].first += 1;
+//                        tau_hat_tri.insert({x,n_val_temp,n_node.node_val});
+//                    }
+//                }
+//            }
+//        }
     }
 
+    #if DEBUG_MODE
+        cout << " Tau Hat set " << endl;
+    #endif
+
+//    return 1;
+    for(const auto &tau_it: tau_hat_e){
+        cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
+    }
+
+//    return 1;
+
 //#if DEBUG_MODE
-//    for(const auto &tau_it: tau_hat_e){
-//        cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
-//    }
+    for(const auto &tau_it: tau_hat_e){
+        cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
+    }
 //
 //    for(const auto& tri: tau_hat_tri){
 //        cout << "Triangle" << tri.u << " " << tri.v << " " << tri.w << endl;
@@ -344,13 +366,14 @@ int main(int argc, char *argv[]) {
 
             if (a.second == 0) {
                 my_edges += 1;
+                break;
 //                k_min_loc = min(k_min_loc,a.first);
             }
         }
 
 
         int all_edges;
-        MPI_Allreduce(&my_edges, &all_edges, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+        MPI_Allreduce(&my_edges, &all_edges, 1, MPI_INT, MPI_LAND, MPI_COMM_WORLD);
 
         if (all_edges == 0) {
             break;
@@ -364,25 +387,25 @@ int main(int argc, char *argv[]) {
         while (true) {
             vector <vector<query_struct>> decrement_queries(size);
 
-            cout << k << endl;
+            cout <<"Rank" << rank << " considering " << k << endl;
             int f_k_count = 0;
             for (auto const &pr: tau_hat_e) {
                 auto const &edge = pr.first;
                 auto const &tau_val = pr.second;
                 if(tau_val.first < k-2 && tau_val.second == 0){
                     f_k_count ++;
+                    break;
                 }
             }
 
 
             int f_k_count_global;
-            MPI_Allreduce(&f_k_count, &f_k_count_global, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+            MPI_Allreduce(&f_k_count, &f_k_count_global, 1, MPI_INT, MPI_LAND, MPI_COMM_WORLD);
 
-//            cout << f_k_count_global << endl;
+            cout << f_k_count_global << endl;
             if (f_k_count_global == 0) {
                 break;
             }
-
 
 
 
@@ -398,8 +421,12 @@ int main(int argc, char *argv[]) {
                 auto node_to_enum = graph[edge.first];
                 for (const auto &neighb: node_to_enum.neighbours) {
                     // If a triangle exists
+                    auto l = min(edge.second, neighb.node_val);
+                    auto r = max(edge.second, neighb.node_val);
+
+
                     if (neighb.node_val != edge.second &&
-                        tau_hat_tri.count({edge.first, edge.second, neighb.node_val})) {
+                        tau_hat_tri.count({l,r})) {
                         auto &under_consider = tau_hat_e[{edge.first, neighb.node_val}];
 //                     Case where both are min
                         if (under_consider.first < k - 2 && under_consider.second == 0) {
