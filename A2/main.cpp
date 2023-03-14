@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <cassert>
 #include <vector>
-#include <mpi/mpi.h>
+#include <mpi.h>
 #include <set>
 #include <climits>
 #include <fstream>
@@ -225,14 +225,15 @@ int main(int argc, char *argv[]) {
 
 
     map<pair<int,int>,vector<int>> edge_to_third_node_map;
-    map<pair<int,int>,pair<int,int>> tau_hat_e;
+    map<pair<int,int>,int> tau_hat_e;
+    map<pair<int,int>,int> gamma_e;
 
 
 
 
     for(const auto &node_g: graph){
         for(const auto &node_g_n_1: node_g.second.neighbours){
-            tau_hat_e[{node_g.second.node_val,node_g_n_1.node_val}] = {0,0};
+            tau_hat_e[{node_g.second.node_val,node_g_n_1.node_val}] = {0};
         }
     }
 
@@ -300,7 +301,7 @@ int main(int argc, char *argv[]) {
             if(n_node_1.node_val % size == rank){
                 for(const auto &n_node_2: temp){
                     if(tau_hat_e.count({n_node_1.node_val,n_node_2.node_val})){
-                        tau_hat_e[{n_node_1.node_val,n_node_2.node_val}].first++;
+                        tau_hat_e[{n_node_1.node_val,n_node_2.node_val}]++;
 //                        if(n_val_temp < n_node_2.node_val){
                             tau_hat_tri[{n_val_temp,n_node_2.node_val}] = 2;
 //                        }
@@ -360,16 +361,7 @@ int main(int argc, char *argv[]) {
     while (true) {
 
 
-        int my_edges = 0;
-        for (auto it = tau_hat_e.begin(); it != tau_hat_e.end(); ++it) {
-            const auto &a = it->second;
-
-            if (a.second == 0) {
-                my_edges += 1;
-                break;
-            }
-        }
-
+        int my_edges = tau_hat_e.size();
 
         int all_edges;
         MPI_Allreduce(&my_edges, &all_edges, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -392,7 +384,7 @@ int main(int argc, char *argv[]) {
             for (auto const &pr: tau_hat_e) {
                 auto const &edge = pr.first;
                 auto const &tau_val = pr.second;
-                if(tau_val.first < k-2 && tau_val.second == 0){
+                if(tau_val < k-2){
                     f_k_count ++;
                     break;
                 }
@@ -411,11 +403,11 @@ int main(int argc, char *argv[]) {
 
 
             for (auto const &pr: tau_hat_e) {
-            auto const &edge = pr.first;
-            auto const &tau_val = pr.second;
+                auto const &edge = pr.first;
+                auto const &tau_val = pr.second;
 
 
-            if (tau_val.first < k - 2 && tau_val.second == 0) {
+            if (tau_val < k - 2) {
 
                 auto node_to_enum = graph[edge.first];
                 for (const auto &neighb: node_to_enum.neighbours) {
@@ -424,10 +416,11 @@ int main(int argc, char *argv[]) {
                     auto r = max(edge.second, neighb.node_val);
 
 
-                    if (neighb.node_val != edge.second && tau_hat_tri[{l,r}] == 2) {
+                    if (neighb.node_val != edge.second && tau_hat_tri[{l,r}] == 2 && tau_hat_e.count({edge.first, neighb.node_val})) {
+
                         auto &under_consider = tau_hat_e[{edge.first, neighb.node_val}];
 //                     Case where both are min
-                        if (under_consider.first < k - 2 && under_consider.second == 0) {
+                        if (under_consider < k - 2) {
                             // Only 1 of them sends
                             if (edge.second < neighb.node_val) {
                                 decrement_queries[node_mapping[edge.second]].push_back({edge.second, neighb.node_val});
@@ -436,12 +429,12 @@ int main(int argc, char *argv[]) {
 
                             }
                         } else {
-                            if (under_consider.second == 0) {
+
                                 decrement_queries[node_mapping[edge.second]].push_back({edge.second, neighb.node_val});
                                 decrement_queries[node_mapping[neighb.node_val]].push_back(
                                         {neighb.node_val, edge.second});
 
-                            }
+
 
                         }
                     }
@@ -458,26 +451,29 @@ int main(int argc, char *argv[]) {
 
 
             // Settling the edges
-        for (auto &pr: tau_hat_e) {
-            auto const &edge = pr.first;
-            auto &tau_val = pr.second;
-            if (tau_val.first < k - 2 && tau_val.second == 0) {
-                tau_val.first = k - 1;
-                tau_val.second = 1;
+            for (auto it = tau_hat_e.begin(); it != tau_hat_e.end();) {
+                auto const &edge = it->first;
+                auto &tau_val = it->second;
+                if (tau_val < k - 2) {
+                    gamma_e[edge] = k-1;
 
-                for(auto x: graph[edge.first].neighbours){
-                    dead_queries[node_mapping[x.node_val]].insert({edge.first,edge.second});
+                    for(auto x: graph[edge.first].neighbours){
+                        dead_queries[node_mapping[x.node_val]].insert({edge.first,edge.second});
+                    }
+
+                    for(auto x: graph[edge.second].neighbours){
+                        dead_queries[node_mapping[x.node_val]].insert({edge.second,edge.first});
+                    }
+
+                    it = tau_hat_e.erase(it);
                 }
-
-                for(auto x: graph[edge.second].neighbours){
-                    dead_queries[node_mapping[x.node_val]].insert({edge.second,edge.first});
+                else {
+                    ++it;
                 }
-
             }
 
-        }
 
-        vector<int> dead_query_sendcounts(size, 0);
+            vector<int> dead_query_sendcounts(size, 0);
         vector<int> dead_query_sdispls(size, 0);
 
 
@@ -616,11 +612,10 @@ int main(int argc, char *argv[]) {
 
         for(auto q: query_recv_buf){
 
-            auto &edge_to_pot_dec = tau_hat_e[{q.u, q.v}];
+            if(tau_hat_e.count({q.u,q.v})){
+                tau_hat_e[{q.u, q.v}]--;
+            }
 
-                if (edge_to_pot_dec.second == 0) {
-                    edge_to_pot_dec.first--;
-                }
         }
 
 
@@ -680,9 +675,9 @@ int main(int argc, char *argv[]) {
 
 #if DEBUG_MODE
 
-        for(const auto &tau_it: tau_hat_e){
-           cout<< "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
-        }
+//        for(const auto &tau_it: tau_hat_e){
+//           cout<< "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
+//        }
        cout<< endl;
        cout<< endl;
 
@@ -733,26 +728,26 @@ int main(int argc, char *argv[]) {
 
 #if DEBUG_MODE
     MPI_Barrier(MPI_COMM_WORLD);
-    set<int> tt;
+//    set<int> tt;
+//
+//    for(const auto &tau_it: tau_hat_e){
+////       cout<< "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
+//        tt.insert((tau_it.second).first);
+//    }
 
-    for(const auto &tau_it: tau_hat_e){
-//       cout<< "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
-        tt.insert((tau_it.second).first);
-    }
-
-   cout<< "My rank " << rank << ": ";
-    for(auto x: tt){
-       cout<< x << ", " ;
-    }
-   cout<< endl;
+//   cout<< "My rank " << rank << ": ";
+//    for(auto x: tt){
+//       cout<< x << ", " ;
+//    }
+//   cout<< endl;
 //   cout<< "Final K I get "<< k << endl;
 #endif
 
     if(verbose == 0){
         int max_k_loc = 0;
         int max_k_glob;
-        for(const auto &tau_it: tau_hat_e){
-            max_k_loc = max(max_k_loc,tau_it.second.first);
+        for(const auto &tau_it: gamma_e){
+            max_k_loc = max(max_k_loc,tau_it.second);
         }
 
 
@@ -781,12 +776,12 @@ int main(int argc, char *argv[]) {
 
         vector <tau_edge> settled_edges;
 
-        for (const auto &tau_it: tau_hat_e) {
+        for (const auto &tau_it: gamma_e) {
             auto const &edge = tau_it.first;
             auto const &tau_val = tau_it.second;
 
             if (edge.first < edge.second) {
-                auto new_tau_edge = tau_edge{edge.first, edge.second, tau_val.first};
+                auto new_tau_edge = tau_edge{edge.first, edge.second, tau_val};
                 settled_edges.push_back(new_tau_edge);
             }
 

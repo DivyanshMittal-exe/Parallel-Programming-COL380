@@ -26,25 +26,44 @@ testcase: testcase_maker
 clean:
 	rm -f main.o exec testcase_maker.o testcase_maker
 
+time_test: exec
+	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test0/test-input-0.gra --headerpath=test_case/test0/test-header-0.dat --outputpath=test_case/test0/o_me.txt --verbose=0 --startk=1 --endk=10 --p=0
+	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test1/test-input-1.gra --headerpath=test_case/test1/test-header-1.dat --outputpath=test_case/test1/o_me.txt --verbose=0 --startk=1 --endk=10 --p=0
+	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test2/test-input-2.gra --headerpath=test_case/test2/test-header-2.dat --outputpath=test_case/test2/o_me.txt --verbose=0 --startk=1 --endk=8 --p=0
+	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test3/test-input-3.gra --headerpath=test_case/test3/test-header-3.dat --outputpath=test_case/test3/o_me.txt --verbose=0 --startk=1 --endk=5 --p=0
+	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test4/test-input-4.gra --headerpath=test_case/test4/test-header-4.dat --outputpath=test_case/test4/o_me.txt --verbose=0 --startk=1 --endk=6 --p=0
+	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test5/test-input-5.gra --headerpath=test_case/test5/test-header-5.dat --outputpath=test_case/test5/o_me.txt --verbose=0 --startk=1 --endk=8 --p=0
+
 test_base: exec
 	rm test_case/test0/o_me.txt
 	rm test_case/test1/o_me.txt
 	rm test_case/test2/o_me.txt
-#	rm test_case/test3/o_me.txt
+	rm test_case/test3/o_me.txt
 	rm test_case/test4/o_me.txt
 	rm test_case/test5/o_me.txt
 	#rm test_case/test8/o_me.txt
+#	mpirun -np 6 ./exec --taskid=1 --inputpath=/tmp/COL380/A2/test0/test-input-0.gra --headerpath=/tmp/COL380/A2/test0/test-header-0.dat --outputpath=test_case/test0/o_me.txt --verbose=1 --startk=1 --endk=10 --p=0
+#	mpirun -np 6 ./exec --taskid=1 --inputpath=/tmp/COL380/A2/test1/test-input-1.gra --headerpath=/tmp/COL380/A2/test1/test-header-1.dat --outputpath=test_case/test1/o_me.txt --verbose=1 --startk=1 --endk=10 --p=0
+#	mpirun -np 6 ./exec --taskid=1 --inputpath=/tmp/COL380/A2/test2/test-input-2.gra --headerpath=/tmp/COL380/A2/test2/test-header-2.dat --outputpath=test_case/test2/o_me.txt --verbose=1 --startk=1 --endk=8 --p=0
+#	mpirun -np 6 ./exec --taskid=1 --inputpath=/tmp/COL380/A2/test3/test-input-3.gra --headerpath=/tmp/COL380/A2/test3/test-header-3.dat --outputpath=test_case/test3/o_me.txt --verbose=1 --startk=1 --endk=5 --p=0
+#	mpirun -np 6 ./exec --taskid=1 --inputpath=/tmp/COL380/A2/test4/test-input-4.gra --headerpath=/tmp/COL380/A2/test4/test-header-4.dat --outputpath=test_case/test4/o_me.txt --verbose=1 --startk=1 --endk=6 --p=0
+#	mpirun -np 6 ./exec --taskid=1 --inputpath=/tmp/COL380/A2/test5/test-input-5.gra --headerpath=/tmp/COL380/A2/test5/test-header-5.dat --outputpath=test_case/test5/o_me.txt --verbose=1 --startk=1 --endk=8 --p=0
+#	mpirun -np 6 ./exec --taskid=1 --inputpath=/tmp/COL380/A2/test6/test-input-6.gra --headerpath=/tmp/COL380/A2/test6/test-header-6.dat --outputpath=test_case/test6/o_me.txt --verbose=1 --startk=1 --endk=29 --p=0
+#	mpirun -np 6 ./exec --taskid=1 --inputpath=/tmp/COL380/A2/test7/test-input-7.gra --headerpath=/tmp/COL380/A2/test7/test-header-7.dat --outputpath=test_case/test7/o_me.txt --verbose=1 --startk=10 --endk=25 --p=0
+#	mpirun -np 6 ./exec --taskid=1 --inputpath=/tmp/COL380/A2/test8/test-input-8.gra --headerpath=/tmp/COL380/A2/test8/test-header-8.dat --outputpath=test_case/test8/o_me.txt --verbose=1 --startk=2 --endk=6 --p=0
+#	mpirun -np 6 ./exec --taskid=1 --inputpath=/tmp/COL380/A2/test9/test-input-9.gra --headerpath=/tmp/COL380/A2/test9/test-header-9.dat --outputpath=test_case/test9/o_me.txt --verbose=1 --startk=3 --endk=3 --p=0
+
 	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test0/test-input-0.gra --headerpath=test_case/test0/test-header-0.dat --outputpath=test_case/test0/o_me.txt --verbose=1 --startk=1 --endk=10 --p=0
 	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test1/test-input-1.gra --headerpath=test_case/test1/test-header-1.dat --outputpath=test_case/test1/o_me.txt --verbose=1 --startk=1 --endk=10 --p=0
 	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test2/test-input-2.gra --headerpath=test_case/test2/test-header-2.dat --outputpath=test_case/test2/o_me.txt --verbose=1 --startk=1 --endk=8 --p=0
-#	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test3/test-input-3.gra --headerpath=test_case/test3/test-header-3.dat --outputpath=test_case/test3/o_me.txt --verbose=0 --startk=1 --endk=5 --p=0
+	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test3/test-input-3.gra --headerpath=test_case/test3/test-header-3.dat --outputpath=test_case/test3/o_me.txt --verbose=1 --startk=1 --endk=5 --p=0
 	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test4/test-input-4.gra --headerpath=test_case/test4/test-header-4.dat --outputpath=test_case/test4/o_me.txt --verbose=1 --startk=1 --endk=6 --p=0
 	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test5/test-input-5.gra --headerpath=test_case/test5/test-header-5.dat --outputpath=test_case/test5/o_me.txt --verbose=1 --startk=1 --endk=8 --p=0
-#	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test6/test-input-6.gra --headerpath=test_case/test6/test-header-6.dat --outputpath=test_case/test6/o_me.txt --verbose=0 --startk=1 --endk=10 --p=0
-#	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test7/test-input-7.gra --headerpath=test_case/test7/test-header-7.dat --outputpath=test_case/test7/o_me.txt --verbose=0 --startk=1 --endk=10 --p=0
-#	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test8/test-input-8.gra --headerpath=test_case/test8/test-header-8.dat --outputpath=test_case/test8/o_me.txt --verbose=0 --startk=1 --endk=10 --p=0
-#	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test9/test-input-9.gra --headerpath=test_case/test9/test-header-9.dat --outputpath=test_case/test9/o_me.txt --verbose=0 --startk=1 --endk=10 --p=0
-	#diff test_case/test0/o_me.txt test_case/test0/output0_verbose.txt
+#	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test6/test-input-6.gra --headerpath=test_case/test6/test-header-6.dat --outputpath=test_case/test6/o_me.txt --verbose=1 --startk=1 --endk=29 --p=0
+#	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test7/test-input-7.gra --headerpath=test_case/test7/test-header-7.dat --outputpath=test_case/test7/o_me.txt --verbose=1 --startk=10 --endk=25 --p=0
+#	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test8/test-input-8.gra --headerpath=test_case/test8/test-header-8.dat --outputpath=test_case/test8/o_me.txt --verbose=1 --startk=2 --endk=6 --p=0
+#	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test9/test-input-9.gra --headerpath=test_case/test9/test-header-9.dat --outputpath=test_case/test9/o_me.txt --verbose=1 --startk=3 --endk=3 --p=0
+#	#diff test_case/test0/o_me.txt test_case/test0/output0_verbose.txt
 	#diff test_case/test1/o_me.txt test_case/test1/output1_verbose.txt
 	#diff test_case/test2/o_me.txt test_case/test2/output2_verbose.txt
 #	diff test_case/test3/o_me.txt test_case/test3/output3_verbose.txt
@@ -53,15 +72,22 @@ test_base: exec
 	sort test_case/test0/o_me.txt > test_case/test0/o_me_sort.txt
 	sort test_case/test1/o_me.txt > test_case/test1/o_me_sort.txt
 	sort test_case/test2/o_me.txt > test_case/test2/o_me_sort.txt
-	#sort test_case/test3/o_me.txt > test_case/test3/o_me_sort.txt
+	sort test_case/test3/o_me.txt > test_case/test3/o_me_sort.txt
 	sort test_case/test4/o_me.txt > test_case/test4/o_me_sort.txt
 	sort test_case/test5/o_me.txt > test_case/test5/o_me_sort.txt
-	#sort test_case/test8/o_me.txt > test_case/test8/o_me_sort.txt
+#	sort test_case/test6/o_me.txt > test_case/test6/o_me_sort.txt
+#	sort test_case/test7/o_me.txt > test_case/test7/o_me_sort.txt
+#	sort test_case/test8/o_me.txt > test_case/test8/o_me_sort.txt
+#	sort test_case/test9/o_me.txt > test_case/test9/o_me_sort.txt
 	sort test_case/test0/output0_verbose.txt > test_case/test0/output0_sort.txt
-	sort test_case/test1/output1_verbose.txt > test_case/test1/output0_sort.txt
-	sort test_case/test2/output2_verbose.txt > test_case/test2/output0_sort.txt
-	sort test_case/test3/output3_verbose.txt > test_case/test3/output0_sort.txt
-	sort test_case/test4/output4_verbose.txt > test_case/test4/output0_sort.txt
-	sort test_case/test5/output5_verbose.txt > test_case/test5/output0_sort.txt
+	sort test_case/test1/output1_verbose.txt > test_case/test1/output1_sort.txt
+	sort test_case/test2/output2_verbose.txt > test_case/test2/output2_sort.txt
+	sort test_case/test3/output3_verbose.txt > test_case/test3/output3_sort.txt
+	sort test_case/test4/output4_verbose.txt > test_case/test4/output4_sort.txt
+	sort test_case/test5/output5_verbose.txt > test_case/test5/output5_sort.txt
+#	sort test_case/test6/output6_verbose.txt > test_case/test6/output6_sort.txt
+#	sort test_case/test7/output7_verbose.txt > test_case/test7/output7_sort.txt
+#	sort test_case/test8/output8_verbose.txt > test_case/test8/output8_sort.txt
+#	sort test_case/test9/output9_verbose.txt > test_case/test9/output9_sort.txt
 	#sort test_case/test8/output8.txt > test_case/test8/output0_sort.txt
 
