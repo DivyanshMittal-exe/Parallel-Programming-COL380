@@ -295,17 +295,54 @@ int main(int argc, char *argv[]) {
 //        #if DEBUG_MODE
 //                cout << "Read node " << n_val_temp << " " << n_deg_temp<< endl;
 //        #endif
+
+
         for(const auto &n_node_1: temp){
             if(n_node_1.node_val % size == rank){
-                for(const auto &n_node_2: temp){
-                    if(tau_hat_e.count({n_node_1.node_val,n_node_2.node_val}))
-                        tau_hat_e[{n_node_1.node_val,n_node_2.node_val}].first++;
-                    if(n_val_temp < n_node_2.node_val){
-                        tau_hat_tri[{n_val_temp,n_node_2.node_val}] = 0;
+                auto &other = temp;
+                auto &me = graph[n_node_1.node_val/size].neighbours;
+
+                auto it_1 = me.begin();
+                auto it_2 = other.begin();
+
+                while(it_1 != me.end() && it_2 != other.end()){
+//                    cout << it_1->node_val << " " << it_2->node_val << endl;
+                    if(it_1->node_val == it_2->node_val){
+                        tau_hat_e[{n_node_1.node_val,n_val_temp}].first++;
+                        if(n_val_temp < it_2->node_val){
+                            tau_hat_tri[{n_val_temp,it_2->node_val}] = 0;
+                        }
+                        it_2++;
+                        it_1++;
+                    }else if(it_1->node_val < it_2->node_val){
+                        it_1++;
+                    }else{
+                        it_2++;
                     }
                 }
             }
         }
+
+
+
+
+
+
+
+
+
+//        for(const auto &n_node_1: temp){
+//            if(n_node_1.node_val % size == rank){
+//                for(const auto &n_node_2: temp){
+//                    if(tau_hat_e.count({n_node_1.node_val,n_node_2.node_val})){
+//                        tau_hat_e[{n_node_1.node_val,n_node_2.node_val}].first++;
+//                        if(n_val_temp < n_node_2.node_val){
+//                            tau_hat_tri[{n_val_temp,n_node_2.node_val}] = 0;
+//                        }
+//                    }
+//                }
+//            }
+//        }
 
 //        for(const auto &n_node: temp){
 //            if(n_val_temp < n_node.node_val){
@@ -320,22 +357,24 @@ int main(int argc, char *argv[]) {
 //        }
     }
 
+    cout << " Supp Set " << endl;
+
     #if DEBUG_MODE
         cout << " Tau Hat set " << endl;
     #endif
 
 //    return 1;
-    for(const auto &tau_it: tau_hat_e){
-        cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
-    }
+//    for(const auto &tau_it: tau_hat_e){
+//        cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
+//    }
 
 //    return 1;
 
 //#if DEBUG_MODE
-    for(const auto &tau_it: tau_hat_e){
-        cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
-    }
-//
+//    for(const auto &tau_it: tau_hat_e){
+//        cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
+//    }
+////
 //    for(const auto& tri: tau_hat_tri){
 //        cout << "Triangle" << tri.u << " " << tri.v << " " << tri.w << endl;
 //    }
