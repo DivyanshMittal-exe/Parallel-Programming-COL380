@@ -26,6 +26,14 @@ testcase: testcase_maker
 clean:
 	rm -f main.o exec testcase_maker.o testcase_maker
 
+test_css: exec
+	mpirun -np 8 ./exec --taskid=1 --inputpath=test_case/test0/test-input-0.gra --headerpath=test_case/test0/test-header-0.dat --outputpath=test_case/test0/o_me.txt --verbose=1 --startk=1 --endk=10 --p=0
+	mpirun -np 8 ./exec --taskid=1 --inputpath=test_case/test1/test-input-1.gra --headerpath=test_case/test1/test-header-1.dat --outputpath=test_case/test1/o_me.txt --verbose=1 --startk=1 --endk=10 --p=0
+	mpirun -np 8 ./exec --taskid=1 --inputpath=test_case/test2/test-input-2.gra --headerpath=test_case/test2/test-header-2.dat --outputpath=test_case/test2/o_me.txt --verbose=1 --startk=1 --endk=8 --p=0
+	mpirun -np 8 ./exec --taskid=1 --inputpath=test_case/test3/test-input-3.gra --headerpath=test_case/test3/test-header-3.dat --outputpath=test_case/test3/o_me.txt --verbose=1 --startk=1 --endk=5 --p=0
+	mpirun -np 8 ./exec --taskid=1 --inputpath=test_case/test4/test-input-4.gra --headerpath=test_case/test4/test-header-4.dat --outputpath=test_case/test4/o_me.txt --verbose=1 --startk=1 --endk=6 --p=0
+	mpirun -np 8 ./exec --taskid=1 --inputpath=test_case/test5/test-input-5.gra --headerpath=test_case/test5/test-header-5.dat --outputpath=test_case/test5/o_me.txt --verbose=1 --startk=1 --endk=8 --p=0
+
 test_base: exec
 	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test0/test-input-0.gra --headerpath=test_case/test0/test-header-0.dat --outputpath=test_case/test0/o_me.txt --verbose=1 --startk=1 --endk=10 --p=0
 	mpirun -np 3 ./exec --taskid=1 --inputpath=test_case/test1/test-input-1.gra --headerpath=test_case/test1/test-header-1.dat --outputpath=test_case/test1/o_me.txt --verbose=1 --startk=1 --endk=10 --p=0
