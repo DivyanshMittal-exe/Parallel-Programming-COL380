@@ -26,15 +26,6 @@ using namespace std;
 const int INF = INT_MAX;
 
 
-struct HASH_FOR_PAIR {
-    template <class T1, class T2>
-    size_t operator()(const pair<T1, T2>& p) const
-    {
-        return p.first >= p.second ? p.first * p.first + p.first + p.second : p.second * p.second + p.first;
-
-    }
-};
-
 struct Tri_Struct {
     int u, v, w;
 
@@ -329,6 +320,15 @@ int main(int argc, char *argv[]) {
 //    tau_hat_tri.reserve(m/size);
 
 
+
+
+    int bloom_size = n;
+
+    vector<bool> bloom_filter(bloom_size);
+
+
+
+
     for(int i = 0; i < n; i++){
 
 
@@ -379,6 +379,17 @@ int main(int argc, char *argv[]) {
                         // }
 
                         tau_hat_tri[n_val_temp].push_back(it_2->node_val);
+
+//                        auto hhh1 = h1(n_val_temp,it_2->node_val);
+//                        auto hhh2 = h2(n_val_temp,it_2->node_val);
+//
+//                        bloom_filter[(hhh1) % bloom_size] = 1;
+//                        bloom_filter[(hhh1 + hhh2 + 1) % bloom_size] = 1;
+//                        bloom_filter[(hhh1 + 2*hhh2 + 4) % bloom_size] = 1;
+
+
+//                        bloom_filter[h1(n_val_temp,it_2->node_val) % bloom_size] = 1;
+//                        bloom_filter[h2(n_val_temp,it_2->node_val) % bloom_size] = 1;
 
 
                         it_2++;
@@ -552,8 +563,15 @@ int main(int argc, char *argv[]) {
                         // auto l = min(edge.second, neighb.node_val);
                         // auto r = max(edge.second, neighb.node_val);
 
+//                        auto hhh1 = h1(pr.edge_second,neighb.node_val);
+//                        auto hhh2 = h2(pr.edge_second,neighb.node_val);
 
                         if (neighb.node_val != pr.edge_second &&
+//                                bloom_filter[(hhh1) % bloom_size] &&
+//                                bloom_filter[(hhh1 + hhh2 + 1) % bloom_size] &&
+//                                bloom_filter[(hhh1 + 2*hhh2 + 4) % bloom_size] &&
+//                                bloom_filter[h1(pr.edge_second,neighb.node_val) % bloom_size] &&
+//                                bloom_filter[h2(pr.edge_second,neighb.node_val) % bloom_size] &&
                             std::binary_search(tau_hat_tri[pr.edge_second].begin(), tau_hat_tri[pr.edge_second].end(),
                                                neighb.node_val)
 

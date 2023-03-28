@@ -1,8 +1,8 @@
 CC = g++
-CFLAGS = -std=c++17 -O3
+CFLAGS = -g -std=c++17 -O3
 
 CXX = mpic++
-CXXFLAGS = -O3
+CXXFLAGS = -g -O3
 
 
 all:exec
