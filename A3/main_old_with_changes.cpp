@@ -11,13 +11,12 @@
 #include <map>
 #include <chrono>
 
-
 #define DEBUG_MODE 0
 #define EXP_MODE 1
 #define VERBOSE_ONE_MODE_CODE 1
 
 #if DEBUG_MODE
-#define DEBUG_STAT //// cout<< "Here by " << rank << endl;
+#define DEBUG_STAT //cout << "Here by " << rank << endl;
 #else
 #define DEBUG_STAT ;
 #endif
@@ -25,6 +24,16 @@
 using namespace std;
 
 const int INF = INT_MAX;
+
+
+struct HASH_FOR_PAIR {
+    template <class T1, class T2>
+    size_t operator()(const pair<T1, T2>& p) const
+    {
+        return p.first >= p.second ? p.first * p.first + p.first + p.second : p.second * p.second + p.first;
+
+    }
+};
 
 struct Tri_Struct {
     int u, v, w;
@@ -67,14 +76,6 @@ struct query_struct{
     bool operator==(const query_struct& other) const {
         return ((u == other.u) && (v == other.v));
     }
-
-    bool operator<(const query_struct& other) const {
-        if (u != other.u)
-            return u < other.u;
-        else
-            return v < other.v;
-    }
-
 };
 
 
@@ -104,10 +105,10 @@ int main(int argc, char *argv[]) {
 
 
 #if DEBUG_MODE
-    //// cout<< "HELLO" << endl;
+    //cout << "HELLO" << endl;
 #endif
-
     auto start = chrono::steady_clock::now();
+
 
     MPI_Init(&argc, &argv);
     int task_id = -1;
@@ -142,7 +143,7 @@ int main(int argc, char *argv[]) {
     }
 
 
-    //// cout<< "Inp " << input_path << endl;
+    //cout << "Inp " << input_path << endl;
 
 
 
@@ -176,7 +177,7 @@ int main(int argc, char *argv[]) {
 
 
 #if DEBUG_MODE
-    //// cout<< "Initialised" << endl;
+    //cout << "Initialised" << endl;
 #endif
 
 
@@ -192,7 +193,7 @@ int main(int argc, char *argv[]) {
 
 
 #if DEBUG_MODE
-    //// cout<< "Read n,m " << n << " " << m << endl;
+    //cout << "Read n,m " << n << " " << m << endl;
 #endif
 
 
@@ -202,9 +203,9 @@ int main(int argc, char *argv[]) {
 
 
 #if DEBUG_MODE
-    //// cout<< "Read offsets " << all_offsets[rank] << endl;
+    //cout << "Read offsets " << all_offsets[rank] << endl;
 //        for(int i = 0; i < n; i++){
-//            //// cout<< rank << " "<< i << " " << all_offsets[i] << endl;
+//            //cout << rank << " "<< i << " " << all_offsets[i] << endl;
 //        }
 #endif
 
@@ -224,25 +225,27 @@ int main(int argc, char *argv[]) {
 //        graph[node_val] = new_node;
         graph.push_back(new_node);
 //        #if DEBUG_MODE
-//                //// cout<< "Read node " << node_val << endl;
+//                //cout << "Read node " << node_val << endl;
 //        #endif
     }
 
 #if DEBUG_MODE
-                //// cout<< "Read nodes " << endl;
-        #endif
+    //cout << "Read nodes " << endl;
+#endif
 
 
-    map<pair<int,int>,vector<int>> edge_to_third_node_map;
-    map<pair<int,int>,int> tau_hat_e;
-    map<pair<int,int>,int> gamma_e;
+//    map<pair<int,int>,pair<int,int>> tau_hat_e;
+
+    vector<vector<tuple<int,int,int>>> tau_hat_e(n);
+
 
 
 
 
     for(const auto &node_g: graph){
         for(const auto &node_g_n_1: node_g.neighbours){
-            tau_hat_e[{node_g.node_val,node_g_n_1.node_val}] = 0;
+            tau_hat_e[node_g.node_val].push_back({node_g_n_1.node_val,0,0});
+//            tau_hat_e[{node_g.node_val,node_g_n_1.node_val}] = {0,0};
         }
     }
 
@@ -252,7 +255,7 @@ int main(int argc, char *argv[]) {
 //            for(const auto &node_g_n_2: node_g.second.neighbours){
 //                if(node_g_n_1.node_val < node_g_n_2.node_val){
 ////                    #if DEBUG_MODE
-////                        //// cout<< " Enum " << rank << " " << i << ": " <<node_g_n_1.node_val << " " << node_g_n_2.node_val << endl;
+////                        //cout << " Enum " << rank << " " << i << ": " <<node_g_n_1.node_val << " " << node_g_n_2.node_val << endl;
 ////                    ++i;
 ////                    #endif
 //                    edge_to_third_node_map[{node_g_n_1.node_val,node_g_n_2.node_val}].push_back(node_g.second.node_val);
@@ -262,18 +265,18 @@ int main(int argc, char *argv[]) {
 //        }
 //    }
 
- #if DEBUG_MODE
-        //// cout<< "Mapped " << endl;
-    #endif
+#if DEBUG_MODE
+    //cout << "Mapped " << endl;
+#endif
 
 //#if DEBUG_MODE
-//    //// cout<< "Edge_to_third_node_map " << rank << endl;
+//    //cout << "Edge_to_third_node_map " << rank << endl;
 //    for (auto x: edge_to_third_node_map) {
-//        //// cout<< x.first.first << " " << x.first.second << endl;
+//        //cout << x.first.first << " " << x.first.second << endl;
 //        for(auto y: x.second){
-//            //// cout<< y << " ";
+//            //cout << y << " ";
 //        }
-//        //// cout<< endl;
+//        //cout << endl;
 //    }
 //#endif
 
@@ -282,7 +285,15 @@ int main(int argc, char *argv[]) {
 
 //    set<Tri_Struct> tau_hat_tri;
 
-    map<pair<int,int>,int> tau_hat_tri;
+//    map<pair<int,int>,int> tau_hat_tri;
+
+    vector<vector<int>> tau_hat_tri(n);
+
+
+//    unordered_map<pair<int,int>, int,HASH_FOR_PAIR> tau_hat_tri;
+//
+//    tau_hat_tri.max_load_factor(0.25);
+//    tau_hat_tri.reserve(m/size);
 
 
     for(int i = 0; i < n; i++){
@@ -304,7 +315,7 @@ int main(int argc, char *argv[]) {
         MPI_File_read_at_all(input_data, all_offsets[i] + 8, temp.data(), n_deg_temp, MPI_INT , MPI_STATUS_IGNORE);
 
 //        #if DEBUG_MODE
-//                //// cout<< "Read node " << n_val_temp << " " << n_deg_temp<< endl;
+//                //cout << "Read node " << n_val_temp << " " << n_deg_temp<< endl;
 //        #endif
 
 
@@ -316,14 +327,22 @@ int main(int argc, char *argv[]) {
                 auto it_1 = me.begin();
                 auto it_2 = other.begin();
 
+                auto it = lower_bound(tau_hat_e[n_node_1.node_val].begin(), tau_hat_e[n_node_1.node_val].end(), make_tuple(n_val_temp, 0, 0));
+
+
                 while(it_1 != me.end() && it_2 != other.end()){
-//                    //// cout<< it_1->node_val << " " << it_2->node_val << endl;
+//                    //cout << it_1->node_val << " " << it_2->node_val << endl;
                     if(it_1->node_val == it_2->node_val){
-                        tau_hat_e[{n_node_1.node_val,n_val_temp}]++;
-                        if(n_val_temp < it_2->node_val){
-                            tau_hat_tri[{n_val_temp,it_2->node_val}] = 2;
-//                              tau_hat_tri.insert({n_val_temp,it_2->node_val});
-                        }
+
+
+                        get<1>(*it)++;
+
+//                        tau_hat_e[{n_node_1.node_val,n_val_temp}].first++;
+                        // if(n_val_temp < it_2->node_val){
+//                        tau_hat_tri[{n_val_temp,it_2->node_val}] = 0;
+                        // }
+
+                        tau_hat_tri[n_val_temp].push_back(it_2->node_val);
 
                         it_2++;
                         it_1++;
@@ -370,28 +389,28 @@ int main(int argc, char *argv[]) {
 //        }
     }
 
-    //// cout<< " Supp Set " << endl;
+    //cout << " Supp Set " << endl;
 
-    #if DEBUG_MODE
-        //// cout<< " Tau Hat set " << endl;
-    #endif
+#if DEBUG_MODE
+    //cout << " Tau Hat set " << endl;
+#endif
 
 //    return 1;
 //    for(const auto &tau_it: tau_hat_e){
-//        //// cout<< "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
+//        //cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
 //    }
 
 //    return 1;
 
 //#if DEBUG_MODE
 //    for(const auto &tau_it: tau_hat_e){
-//        //// cout<< "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
+//        //cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
 //    }
 ////
 //    for(const auto& tri: tau_hat_tri){
-//        //// cout<< "Triangle" << tri.u << " " << tri.v << " " << tri.w << endl;
+//        //cout << "Triangle" << tri.u << " " << tri.v << " " << tri.w << endl;
 //    }
-////    //// cout<< "Read graph " << graph.size() << endl;
+////    //cout << "Read graph " << graph.size() << endl;
 //#endif
 
 //    int MPI_Alltoallv(const void *sendbuf, const int *sendcounts,
@@ -409,24 +428,23 @@ int main(int argc, char *argv[]) {
 
     while (true) {
 
-//        //// cout<< "YOLO" << endl;
+//        //cout << "YOLO" << endl;
 
 //        int k_min_loc = INT_MAX;
 
 
-//        int my_edges = 0;
-//        for (auto it = tau_hat_e.begin(); it != tau_hat_e.end(); ++it) {
-//            const auto &a = it->second;
-//
-//            if (a == 0) {
-//                my_edges += 1;
-//                break;
-////                k_min_loc = min(k_min_loc,a.first);
-//            }
-//        }
+        int my_edges = 0;
+        for(int i = 0; i < n; i++) {
+            for (auto it = tau_hat_e[i].begin(); it != tau_hat_e[i].end(); ++it) {
+                const auto &a = get<2>(*it);
 
-        int my_edges = tau_hat_e.size();
-
+                if (a == 0) {
+                    my_edges += 1;
+                    break;
+//                k_min_loc = min(k_min_loc,a.first);
+                }
+            }
+        }
 
 
         int all_edges;
@@ -438,20 +456,23 @@ int main(int argc, char *argv[]) {
 
 
 #if DEBUG_MODE
-//        //// cout<< "Considering k_min "<< k_min_loc << " " << k_min_global << endl;
+        //        //cout << "Considering k_min "<< k_min_loc << " " << k_min_global << endl;
 #endif
 
         while (true) {
             vector <vector<query_struct>> decrement_queries(size);
 
-            //// cout<<"Rank" << rank << " considering " << k << endl;
+            //cout <<"Rank" << rank << " considering " << k << endl;
             int f_k_count = 0;
-            for (auto const &pr: tau_hat_e) {
-                auto const &edge = pr.first;
-                auto const &tau_val = pr.second;
-                if(tau_val < k-2){
-                    f_k_count ++;
-                    break;
+            for(int i = 0; i < n; i++) {
+
+                for (auto const &pr: tau_hat_e[i]) {
+//                    auto const &edge = pr.first;
+//                    auto const &tau_val = pr.second;
+                    if (get<1>(pr) < k - 2 && get<2>(pr) == 0) {
+                        f_k_count++;
+                        break;
+                    }
                 }
             }
 
@@ -459,7 +480,7 @@ int main(int argc, char *argv[]) {
             int f_k_count_global;
             MPI_Allreduce(&f_k_count, &f_k_count_global, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
-            //// cout<< f_k_count_global << endl;
+            //cout << f_k_count_global << endl;
             if (f_k_count_global == 0) {
                 break;
             }
@@ -467,145 +488,80 @@ int main(int argc, char *argv[]) {
 
 
 
+        for(int ii = 0; ii < n; ii++){
 
-            for (auto const &pr: tau_hat_e) {
-            auto const &edge = pr.first;
-            auto const &tau_val = pr.second;
-
-
-            if (tau_val < k - 2) {
-
-                auto node_to_enum = graph[edge.first/size];
-                for (const auto &neighb: node_to_enum.neighbours) {
-                    // If a triangle exists
-                    auto l = min(edge.second, neighb.node_val);
-                    auto r = max(edge.second, neighb.node_val);
+            for (auto const &pr: tau_hat_e[ii]) {
+//                auto const &edge = pr.first;
+//                auto const &tau_val = pr.second;
 
 
-                    if (neighb.node_val != edge.second &&
-                        tau_hat_tri[{l,r}]  == 2) {
+                if (get<1>(pr)< k - 2 && get<2>(pr) == 0) {
 
-                        if (tau_hat_e.count({edge.first, neighb.node_val})) {
+                    auto node_to_enum = graph[ii/size];
+                    for (const auto &neighb: node_to_enum.neighbours) {
+                        // If a triangle exists
+                        // auto l = min(get<0>(pr), neighb.node_val);
+                        // auto r = max(get<0>(pr), neighb.node_val);
 
 
-                        auto &under_consider = tau_hat_e[{edge.first, neighb.node_val}];
+                        if (neighb.node_val != get<0>(pr) &&
+                                std::binary_search(tau_hat_tri[get<0>(pr)].begin(), tau_hat_tri[get<0>(pr)].end(),
+                                                   neighb.node_val)
+
+                            ) {
+
+                            auto under_consider = lower_bound(tau_hat_e[ii].begin(), tau_hat_e[ii].end(), make_tuple(neighb.node_val, 0, 0));
+
+
+//                            auto &under_consider = tau_hat_e[{ii, neighb.node_val}];
 //                     Case where both are min
-                        if (under_consider < k - 2) {
-                            // Only 1 of them sends
-                            if (edge.second < neighb.node_val) {
-                                if (edge.second % size == neighb.node_val % size) {
-                                    decrement_queries[edge.second % size].push_back({edge.second, neighb.node_val});
-                                } else {
-                                    decrement_queries[edge.second % size].push_back({edge.second, neighb.node_val});
-                                    decrement_queries[neighb.node_val % size].push_back({neighb.node_val, edge.second});
+                            if (get<1>(*under_consider) < k - 2 && get<2>(*under_consider) == 0) {
+                                // Only 1 of them sends
+                                if (get<0>(pr) < neighb.node_val) {
+                                    decrement_queries[get<0>(pr) % size].push_back({get<0>(pr), neighb.node_val});
+                                    decrement_queries[neighb.node_val % size].push_back(
+                                            {neighb.node_val, get<0>(pr)});
+
                                 }
+                            } else {
+                                if ( get<2>(*under_consider) == 0) {
+                                    decrement_queries[get<0>(pr) % size].push_back({get<0>(pr), neighb.node_val});
+                                    decrement_queries[neighb.node_val % size].push_back(
+                                            {neighb.node_val, get<0>(pr)});
+
+                                }
+
                             }
-                        } else {
-
-                                if (edge.second % size == neighb.node_val % size) {
-                                    decrement_queries[edge.second % size].push_back({edge.second, neighb.node_val});
-                                } else {
-                                    decrement_queries[edge.second % size].push_back({edge.second, neighb.node_val});
-                                    decrement_queries[neighb.node_val % size].push_back({neighb.node_val, edge.second});
-                                }
                         }
-
-                    }
                     }
                 }
             }
+
         }
+
 
 
 //        for (auto &x: decrement_queries) {
 //            x.push_back({-1, -1});
 //        }
 
-//        vector<vector<query_struct>> dead_queries(size);
 
-            // cout<< "Getting Dead Queries" << endl;
-        // Settling the edges
+            // Settling the edges
+            for(int ii = 0;ii < n;ii++){
 
-
-//        for (auto &pr: tau_hat_e) {
-//            auto const &edge = pr.first;
-//            auto &tau_val = pr.second;
-//            if (tau_val.first < k - 2 && tau_val.second == 0) {
-//                tau_val.first = k - 1;
-//                tau_val.second = 1;
-//
-////                if(edge.first < edge.second){
-////                    for(auto x: graph[edge.first].neighbours){
-////                        auto mi_e = min(x.node_val,edge.second);
-////                        auto ma_e = max(x.node_val,edge.second);
-////                        if(tau_hat_tri[{mi_e,ma_e}]){
-////                            dead_queries[x.node_val % size].push_back({edge.first,edge.second});
-////                        }
-////                    }
-////                }
-//            }
-//        }
-
-            // cout<< "Ending Dead Queries" << endl;
-
-
-//        vector<int> dead_query_sendcounts(size, 0);
-//        vector<int> dead_query_sdispls(size, 0);
-//
-//
-//        for (int i = 1; i < size; ++i) {
-//            dead_query_sendcounts[i - 1] = dead_queries[i - 1].size();
-//            dead_query_sdispls[i] = dead_query_sdispls[i - 1] + dead_query_sendcounts[i - 1];
-//        }
-//
-//        dead_query_sendcounts[size - 1] = dead_queries[size - 1].size();
-//
-//
-//        vector <query_struct> all_dead_together;
-//        all_dead_together.reserve(dead_query_sdispls[size - 1] + dead_query_sendcounts[size - 1]);
-//        for (auto &dec_q_node: dead_queries) {
-//            move(dec_q_node.begin(), dec_q_node.end(), back_inserter(all_dead_together));
-//        }
-//
-//        vector<int> dead_query_recvcounts(size, 0);
-
-            // cout<< "Sending Dead Queries Count" << endl;
-
-
-//        MPI_Alltoall(dead_query_sendcounts.data(), 1, MPI_INT, dead_query_recvcounts.data(), 1, MPI_INT, MPI_COMM_WORLD);
-//
-//
-//
-//        vector<int> dead_query_rdispls(size, 0);
-//
-//        for (int i = 1; i < size; i++) {
-//            dead_query_rdispls[i] = dead_query_rdispls[i - 1] + dead_query_recvcounts[i - 1];
-//        }
-//
-//        vector <query_struct> dead_query_recv_buf(dead_query_rdispls[size - 1] + dead_query_recvcounts[size - 1]);
-//
-//
-//        // cout<< "Sending Dead Queries ALL" << endl;
-//
-//
-//        MPI_Alltoallv(all_dead_together.data(),dead_query_sendcounts.data(),
-//                      dead_query_sdispls.data(), MPI_QUERY_STRUCT, dead_query_recv_buf.data(),
-//                      dead_query_recvcounts.data(), dead_query_rdispls.data(), MPI_QUERY_STRUCT,
-//                      MPI_COMM_WORLD);
-
-
-        // cout<< "Got the Dead Queries ALL" << endl;
-
-//
-//        for(auto x: dead_query_recv_buf){
-//                tau_hat_tri[{x.u,x.v}] = 1;
-//        }
-
-        // cout<< "Processing the Dead Queries ALL" << endl;
+            for (auto &pr: tau_hat_e[ii]) {
+//                auto const &edge = pr.first;
+//                auto &tau_val = pr.second;
+                if (get<1>(pr)< k - 2 && get<2>(pr) == 0) {
+                    get<1>(pr)= k - 1;
+                    get<2>(pr) = 1;
+                }
+            }
+            }
 
 
 #if DEBUG_MODE
-        //// cout<< "Edges Settled by " << rank << endl;
+            //cout << "Edges Settled by " << rank << endl;
 #endif
 
 
@@ -615,47 +571,47 @@ int main(int argc, char *argv[]) {
 //                      const int *recvcounts, const int *rdispls, MPI_Datatype recvtype,
 //                      MPI_Comm comm)
 
-        vector<int> query_sendcounts(size, 0);
-        vector<int> query_sdispls(size, 0);
+            vector<int> query_sendcounts(size, 0);
+            vector<int> query_sdispls(size, 0);
 
 
-        for (int i = 1; i < size; ++i) {
-            query_sendcounts[i - 1] = decrement_queries[i - 1].size();
-            query_sdispls[i] = query_sdispls[i - 1] + query_sendcounts[i - 1];
-        }
-        query_sendcounts[size - 1] = decrement_queries[size - 1].size();
+            for (int i = 1; i < size; ++i) {
+                query_sendcounts[i - 1] = decrement_queries[i - 1].size();
+                query_sdispls[i] = query_sdispls[i - 1] + query_sendcounts[i - 1];
+            }
+            query_sendcounts[size - 1] = decrement_queries[size - 1].size();
 
 
-        vector <query_struct> all_together;
-        all_together.reserve(query_sdispls[size - 1] + query_sendcounts[size - 1]);
-        for (auto &dec_q_node: decrement_queries) {
-            move(dec_q_node.begin(), dec_q_node.end(), back_inserter(all_together));
-        }
+            vector <query_struct> all_together;
+            all_together.reserve(query_sdispls[size - 1] + query_sendcounts[size - 1]);
+            for (auto &dec_q_node: decrement_queries) {
+                move(dec_q_node.begin(), dec_q_node.end(), back_inserter(all_together));
+            }
 
 #if DEBUG_MODE
-        //// cout<< "All Queries set by " << rank << endl;
+            //cout << "All Queries set by " << rank << endl;
 #endif
 
 
 //    DEBUG_STAT
-        vector<int> query_recvcounts(size, 0);
+            vector<int> query_recvcounts(size, 0);
 
-        MPI_Alltoall(query_sendcounts.data(), 1, MPI_INT, query_recvcounts.data(), 1, MPI_INT, MPI_COMM_WORLD);
+            MPI_Alltoall(query_sendcounts.data(), 1, MPI_INT, query_recvcounts.data(), 1, MPI_INT, MPI_COMM_WORLD);
 
-        DEBUG_STAT
+            DEBUG_STAT
 
 
-        vector<int> query_rdispls(size, 0);
+            vector<int> query_rdispls(size, 0);
 
-        for (int i = 1; i < size; i++) {
-            query_rdispls[i] = query_rdispls[i - 1] + query_recvcounts[i - 1];
-        }
+            for (int i = 1; i < size; i++) {
+                query_rdispls[i] = query_rdispls[i - 1] + query_recvcounts[i - 1];
+            }
 
 #if DEBUG_MODE
 
-        //// cout<< "query_recv_buf set by " << rank << endl;
+            //cout << "query_recv_buf set by " << rank << endl;
 #endif
-        vector <query_struct> query_recv_buf(query_rdispls[size - 1] + query_recvcounts[size - 1]);
+            vector <query_struct> query_recv_buf(query_rdispls[size - 1] + query_recvcounts[size - 1]);
 
 
 
@@ -663,91 +619,74 @@ int main(int argc, char *argv[]) {
 
 
 #if DEBUG_MODE
-        //// cout<< "All Together " << rank << " " << all_together.size() << " ";
+            //cout << "All Together " << rank << " " << all_together.size() << " ";
         for (auto x: all_together) {
-            //// cout<< "{" << x.u << "," << x.v << "} ";
+            //cout << "{" << x.u << "," << x.v << "} ";
         }
-        //// cout<< endl;
+        //cout << endl;
 #endif
 
 
 #if DEBUG_MODE
-        MPI_Barrier(MPI_COMM_WORLD);
+            MPI_Barrier(MPI_COMM_WORLD);
 
-        //// cout<< " My Rank is" << rank << endl;
+        //cout << " My Rank is" << rank << endl;
 
-        //// cout<< "Send data size: " << all_together.size() << endl;
+        //cout << "Send data size: " << all_together.size() << endl;
 
-        //// cout<< "Send Count :{";
+        //cout << "Send Count :{";
         for (auto qs: query_sendcounts) {
-            //// cout<< qs << ", ";
+            //cout << qs << ", ";
         }
-        //// cout<< "}" << endl;
+        //cout << "}" << endl;
 
-        //// cout<< "Send Displs :{";
+        //cout << "Send Displs :{";
         for (auto qs: query_sdispls) {
-            //// cout<< qs << ", ";
+            //cout << qs << ", ";
         }
-        //// cout<< "}" << endl;
+        //cout << "}" << endl;
 
-        //// cout<< "Recv data size: " << query_recv_buf.size() << endl;
+        //cout << "Recv data size: " << query_recv_buf.size() << endl;
 
 
-        //// cout<< "Recv Counts :{";
+        //cout << "Recv Counts :{";
         for (auto qs: query_recvcounts) {
-            //// cout<< qs << ", ";
+            //cout << qs << ", ";
         }
-        //// cout<< "}" << endl;
+        //cout << "}" << endl;
 
-        //// cout<< "Recv Displs :{";
+        //cout << "Recv Displs :{";
         for (auto qs: query_rdispls) {
-            //// cout<< qs << ", ";
+            //cout << qs << ", ";
         }
-        //// cout<< "}" << endl;
+        //cout << "}" << endl;
 
 #endif
 
-//        MPI_Request req;
 
-        MPI_Alltoallv(all_together.data(), query_sendcounts.data(),
-                      query_sdispls.data(), MPI_QUERY_STRUCT, query_recv_buf.data(),
-                      query_recvcounts.data(), query_rdispls.data(), MPI_QUERY_STRUCT,
-                      MPI_COMM_WORLD);
-
-//        MPI_Wait(&req,MPI_STATUS_IGNORE);
-
-
-        for(auto it = tau_hat_e.begin(); it!= tau_hat_e.end();){
-            auto const &edge = it->first;
-            auto tau_val = it->second;
-            if(tau_val < k-2){
-                gamma_e[edge] = k-1;
-                it = tau_hat_e.erase(it);
-            }else{
-                ++it;
-            }
-        }
-        for(const auto &o: all_together){
-            cout <<"{" << o.u << ", " << o.v << "}";
-        //// cout<< "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
-        }
-        cout << endl;
-
-        cout << rank << " waiting" << endl;
-        cout << rank << " D" << endl;
+            MPI_Alltoallv(all_together.data(), query_sendcounts.data(),
+                          query_sdispls.data(), MPI_QUERY_STRUCT, query_recv_buf.data(),
+                          query_recvcounts.data(), query_rdispls.data(), MPI_QUERY_STRUCT,
+                          MPI_COMM_WORLD);
 
 #if DEBUG_MODE
 
-        //// cout<< " All to All v done" << endl;
+            //cout << " All to All v done" << endl;
 
 #endif
 //        for(int i = 0; i < )
 
-        for(auto q: query_recv_buf){
-            if(tau_hat_e.count({q.u, q.v})){
-                tau_hat_e[{q.u, q.v}]--;
+            for(auto q: query_recv_buf){
+
+                auto edge_to_pot_dec = lower_bound(tau_hat_e[q.u].begin(), tau_hat_e[q.u].end(), make_tuple(q.v, 0, 0));
+
+
+//                auto &edge_to_pot_dec = tau_hat_e[{q.u, q.v}];
+
+                if (get<2>(*edge_to_pot_dec) == 0) {
+                    get<1>(*edge_to_pot_dec)-- ;
+                }
             }
-        }
 
 //        for (int i = 0; i < size; i++) {
 //            for (int j = query_rdispls[i]; j < query_rdispls[i] + query_recvcounts[i]; ++j) {
@@ -763,19 +702,19 @@ int main(int argc, char *argv[]) {
 //            }
 //        }
 
-    }
+        }
 
 #if DEBUG_MODE
 
         for(const auto &tau_it: tau_hat_e){
-            //// cout<< "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
+            //cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
         }
-        //// cout<< endl;
-        //// cout<< endl;
+        //cout << endl;
+        //cout << endl;
 
         MPI_Barrier(MPI_COMM_WORLD);
         if(rank == 0){
-            //// cout<< "ALL DONE" << endl;
+            //cout << "ALL DONE" << endl;
         }
         MPI_Barrier(MPI_COMM_WORLD);
 
@@ -784,20 +723,21 @@ int main(int argc, char *argv[]) {
 
 
 //    for(const auto& tri: tau_hat_tri){
-//        //// cout<< "Triangle" << tri.u << " " << tri.v << " " << tri.w << endl;
+//        //cout << "Triangle" << tri.u << " " << tri.v << " " << tri.w << endl;
 //    }
-//    //// cout<< "Read graph " << graph.size() << endl;
+//    //cout << "Read graph " << graph.size() << endl;
 #endif
+
         k++;
     }
 
 //
 //    for(const auto &tau_it: tau_hat_e){
-//        //// cout<< "Truss no. of Edge (" << (tau_it.first).first << " , " << (tau_it.first).second <<") : " << (tau_it.second).first << endl;
-////        //// cout<< "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
+//        //cout << "Truss no. of Edge (" << (tau_it.first).first << " , " << (tau_it.first).second <<") : " << (tau_it.second).first << endl;
+////        //cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
 //    }
-//    //// cout<< endl;
-//    //// cout<< endl;
+//    //cout << endl;
+//    //cout << endl;
 
 
 
@@ -807,38 +747,39 @@ int main(int argc, char *argv[]) {
 
 //    for(int i = start_k; i < end_k; i++){
 //        if(i > max_K_min_so_far){
-//            //// // cout<< "0\n";
+//            //cout  << "0\n";
 //        }else{
-//            //// cout<< "1\n";
+//            //cout << "1\n";
 //        }
 //
 //    }
-//    //// cout<< endl;
+//    //cout << endl;
 
-////// cout<< "AM DONE" << endl;
+////cout << "AM DONE" << endl;
 
 #if DEBUG_MODE
     MPI_Barrier(MPI_COMM_WORLD);
     set<int> tt;
 
     for(const auto &tau_it: tau_hat_e){
-//        //// cout<< "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
+//        //cout << "Edge Details by " << rank << " "  << (tau_it.first).first << " " << (tau_it.first).second << " " << (tau_it.second).first << " " << (tau_it.second).second << endl;
         tt.insert((tau_it.second).first);
     }
 
-    //// cout<< "My rank " << rank << ": ";
+    //cout << "My rank " << rank << ": ";
     for(auto x: tt){
-        //// cout<< x << ", " ;
+        //cout << x << ", " ;
     }
-    //// cout<< endl;
-//    //// cout<< "Final K I get "<< k << endl;
+    //cout << endl;
+//    //cout << "Final K I get "<< k << endl;
 #endif
 
     if(verbose == 0){
         int max_k_loc = 0;
         int max_k_glob;
-        for(const auto &tau_it: gamma_e){
-            max_k_loc = max(max_k_loc,tau_it.second);
+        for(int i = 0; i < n; i++)
+        for(const auto &tau_it: tau_hat_e[i]){
+            max_k_loc = max(max_k_loc,get<1>(tau_it));
         }
 
 
@@ -867,12 +808,13 @@ int main(int argc, char *argv[]) {
 
         vector <tau_edge> settled_edges;
 
-        for (const auto &tau_it: gamma_e) {
-            auto const &edge = tau_it.first;
-            auto const &tau_val = tau_it.second;
+        for(int ii = 0; ii <n; ii++)
+        for (const auto &pr: tau_hat_e[ii]) {
+//            auto const &edge = tau_it.first;
+//            auto const &tau_val = tau_it.second;
 
-            if (edge.first < edge.second) {
-                auto new_tau_edge = tau_edge{edge.first, edge.second, tau_val};
+            if (ii < get<0>(pr)) {
+                auto new_tau_edge = tau_edge{ii, get<0>(pr), get<1>(pr)};
                 settled_edges.push_back(new_tau_edge);
             }
 
@@ -886,10 +828,10 @@ int main(int argc, char *argv[]) {
         vector<int> settled_edge_rdispls(size, 0);
 
         for (int i = 1; i < size; i++) {
-//            //// cout<< settled_edge_recv_cnt[i-1] << " ";
+//            //cout << settled_edge_recv_cnt[i-1] << " ";
             settled_edge_rdispls[i] = settled_edge_rdispls[i - 1] + settled_edge_recv_cnt[i - 1];
         }
-        //// cout<< endl;
+        //cout << endl;
 
 
         vector <tau_edge> all_edges(m);
@@ -900,11 +842,11 @@ int main(int argc, char *argv[]) {
                        MPI_TAU_EDGE, MPI_COMM_WORLD);
 
 #if DEBUG_MODE
-        //// cout<< rank << ": ";
+        //cout << rank << ": ";
         for(auto x: all_edges){
-            //// cout<< "{" << x.u << ", " << x.v << ": " << x.tau << "}" ;
+            //cout << "{" << x.u << ", " << x.v << ": " << x.tau << "}" ;
         }
-        //// cout<< endl;
+        //cout << endl;
 #endif
 
         vector<vector<pair<int,int>>> final_graph(n);
@@ -983,7 +925,7 @@ int main(int argc, char *argv[]) {
     MPI_Finalize();
 
     auto end = chrono::steady_clock::now();
-     cout<< "Elapsed time in milliseconds: "
+    cout << "Elapsed time in milliseconds: "
          << chrono::duration_cast<chrono::milliseconds>(end - start).count()
          << " ms" << endl;
 
